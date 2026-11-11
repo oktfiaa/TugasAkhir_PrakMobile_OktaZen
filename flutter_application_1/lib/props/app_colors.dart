@@ -1,41 +1,48 @@
 import 'package:flutter/material.dart';
 
-
 /// Palet warna resmi FOODIE (PRO EDITION)
-/// Mengacu pada PRD & Desain Culinary Editorial Futurism:
-/// - Roasted Charcoal: #252D30 (Warna utama / primary)
-/// - Slate Blue: #607783 (Warna pendukung / secondary)
-/// - Saffron: #F5BD50 (Aksen utama / CTA / Star)
-/// - Paprika: #EF8235 (Aksen eksplorasi rasa / warm badge)
-/// - Tomato: #A92F27 (Penekanan tertentu / alert / status tutup)
-/// - Cream: #FFF7E8 (Warna netral seperlunya)
 class AppColors {
   AppColors._();
 
-  // ─── PALET WARNA RESMI PRD ───
-  static const Color charcoal = Color(0xFF252D30); // Roasted Charcoal #252D30
-  static const Color slateBlue = Color(0xFF607783); // Slate Blue #607783
-  static const Color saffron = Color(0xFFF5BD50); // Saffron #F5BD50
-  static const Color paprika = Color(0xFFEF8235); // Paprika #EF8235
-  static const Color tomato = Color(0xFFA92F27); // Tomato #A92F27
-  static const Color cream = Color(0xFFFFF7E8); // Cream #FFF7E8
+  // ─── PALET DASAR (HEX) ───
+  static const Color charcoal = Color(0xFF252D30); // Hitam arang
+  static const Color slateBlue = Color(0xFF607783); // Abu kebiruan
+  static const Color saffron = Color(0xFFF5BD50); // Kuning emas
+  static const Color paprika = Color(0xFFEF8235); // Oranye
+  static const Color tomato = Color(0xFFA92F27); // Merah
+  static const Color cream = Color(0xFFFFF7E8); // Krem
 
-  // ─── SEMANTIC ALIASES & COMPATIBILITY ───
+  // ─── PENGATURAN WARNA UI ───
   static const Color primary = charcoal;
   static const Color secondary = slateBlue;
-  static const Color orange = paprika; // #EF8235
-  static const Color yellow = saffron; // #F5BD50
-  static const Color red = tomato; // #A92F27
-  static const Color green = Color(0xFF3B6E47); // Heritage forest green (verified checkmark)
-  static const Color greenDark = charcoal; // #252D30 (Roasted Charcoal)
 
-  static const Color textDark = charcoal; // #252D30 (Kontras tinggi, tegas)
-  static const Color textMuted = slateBlue; // #607783 (Slate Blue)
-  static const Color line = Color(0xFFE2DDD5); // Border netral bersih
+  // Warna tombol utama (Login, Register, Kirim Saran) & border input saat diketik
+  static const Color orange = paprika; 
+
+  // Warna bintang rating ulasan & perolehan poin
+  static const Color yellow = saffron; 
+
+  // Warna teks error validasi form, teks Lupa Sandi, & border input saat salah
+  static const Color red = tomato; 
+
+  // Warna centang sukses verifikasi & status resto buka
+  static const Color green = Color(0xFF3B6E47); 
+  static const Color greenDark = charcoal; 
+
+  // Warna teks judul, label input ("Email", "Kata Sandi"), & teks yang diketik di field
+  static const Color textDark = charcoal; 
+
+  // Warna teks keterangan (sub-judul, "Ingat saya") & ikon di dalam field (mata, gembok)
+  static const Color textMuted = slateBlue; 
+
+  // Warna garis border kotak input (saat normal) & garis pemisah (divider)
+  static const Color line = Color(0xFFE2DDD5); 
+
+  // Warna latar putih kotak input field & kartu
   static const Color surface = Colors.white;
-  static const Color surfaceSubtle = cream; // #FFF7E8 (Cream netral)
+  static const Color surfaceSubtle = cream; 
 
-  // Canvas latar belakang bersih, solid, kontras tinggi
+  // Warna latar belakang (background) seluruh layar
   static const Color background = Color(0xFFFAF8F5);
 
   static const LinearGradient backgroundGradient = LinearGradient(
