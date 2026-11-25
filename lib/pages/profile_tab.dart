@@ -35,6 +35,7 @@ class ProfileTab extends StatefulWidget {
   final bool biometricOn;
   final void Function(String? url)? onAvatarChanged;
   final void Function(String name)? onNameChanged;
+  final VoidCallback? onBackToHome;
 
   const ProfileTab({
     super.key,
@@ -43,6 +44,7 @@ class ProfileTab extends StatefulWidget {
     this.biometricOn = false,
     this.onAvatarChanged,
     this.onNameChanged,
+    this.onBackToHome,
   });
 
   @override
@@ -1332,7 +1334,42 @@ class _ProfileTabState extends State<ProfileTab>
                       ScrollViewKeyboardDismissBehavior.onDrag,
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                   children: [
-                    Text('Profil', style: AppText.display(22)),
+                    Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () {
+                            if (widget.onBackToHome != null) {
+                              widget.onBackToHome!();
+                            } else if (Navigator.of(context).canPop()) {
+                              Navigator.of(context).pop();
+                            }
+                          },
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: AppColors.line, width: 1),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x08000000),
+                                  blurRadius: 6,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.arrow_back_ios_new_rounded,
+                              size: 18,
+                              color: AppColors.charcoal,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text('Profil', style: AppText.display(22)),
+                      ],
+                    ),
                     const SizedBox(height: 16),
                     _accountCard(name, email),
                     if (widget.fromRegister) ...[

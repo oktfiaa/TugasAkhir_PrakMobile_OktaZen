@@ -12,7 +12,8 @@ import 'detail_page.dart';
 
 class FavoritesPage extends StatefulWidget {
   final bool isTab;
-  const FavoritesPage({super.key, this.isTab = false});
+  final VoidCallback? onBackToHome;
+  const FavoritesPage({super.key, this.isTab = false, this.onBackToHome});
 
   @override
   State<FavoritesPage> createState() => _FavoritesPageState();
@@ -96,21 +97,37 @@ class _FavoritesPageState extends State<FavoritesPage> {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Row(
         children: [
-          if (!widget.isTab && Navigator.of(context).canPop()) ...[
-            InkWell(
-              onTap: () => Navigator.of(context).maybePop(),
-              borderRadius: BorderRadius.circular(8),
-              child: const Padding(
-                padding: EdgeInsets.all(6.0),
-                child: Icon(
-                  Icons.arrow_back_ios_new_rounded,
-                  size: 20,
-                  color: AppColors.textDark,
-                ),
+          GestureDetector(
+            onTap: () {
+              if (widget.onBackToHome != null) {
+                widget.onBackToHome!();
+              } else if (Navigator.of(context).canPop()) {
+                Navigator.of(context).pop();
+              }
+            },
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.line, width: 1),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x08000000),
+                    blurRadius: 6,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                size: 18,
+                color: AppColors.charcoal,
               ),
             ),
-            const SizedBox(width: 12),
-          ],
+          ),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

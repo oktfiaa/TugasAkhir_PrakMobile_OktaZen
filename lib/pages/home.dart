@@ -130,11 +130,15 @@ class _HomePageState extends State<HomePage> {
               userLng: _userLng,
               onBackToHome: () => _select(0),
             ),
-            const FavoritesPage(isTab: true),
+            FavoritesPage(
+              isTab: true,
+              onBackToHome: () => _select(0),
+            ),
             ProfileTab(
               name: _currentName,
               fromRegister: widget.fromRegister,
               biometricOn: widget.biometricOn,
+              onBackToHome: () => _select(0),
               onNameChanged: (newName) {
                 setState(() {
                   _currentName = newName;

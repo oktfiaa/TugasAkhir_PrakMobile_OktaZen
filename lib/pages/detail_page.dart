@@ -543,38 +543,8 @@ class _DetailPageState extends State<DetailPage> {
                 ),
               ),
             ),
-            const Spacer(),
-            _circleButton(
-              _isFavorite
-                  ? Icons.favorite_rounded
-                  : Icons.favorite_border_rounded,
-              color: _isFavorite ? AppColors.red : AppColors.textDark,
-              onTap: _toggleFavorite,
-            ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _circleButton(IconData icon, {VoidCallback? onTap, Color? color}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 38,
-        height: 38,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Color(0x20000000),
-              blurRadius: 8,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Icon(icon, size: 18, color: color ?? AppColors.textDark),
       ),
     );
   }
@@ -672,10 +642,10 @@ class _DetailPageState extends State<DetailPage> {
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: [
         _actionButton(
-          _isFavorite ? Icons.bookmark_rounded : Icons.bookmark_rounded,
-          _isFavorite ? 'Tersimpan' : 'Simpan',
+          _isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+          'Favorit',
           _toggleFavorite,
-          color: _isFavorite ? AppColors.orange : AppColors.greenDark,
+          color: _isFavorite ? AppColors.red : AppColors.greenDark,
         ),
         _actionButton(
           _hasReminder ? Icons.alarm_on_rounded : Icons.add_alarm_rounded,
