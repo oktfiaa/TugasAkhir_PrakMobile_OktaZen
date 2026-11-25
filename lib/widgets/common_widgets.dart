@@ -208,7 +208,10 @@ class AvatarImage extends StatelessWidget {
     final fallbackWidget = Container(
       width: size,
       height: size,
-      color: backgroundColor,
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        shape: BoxShape.circle,
+      ),
       alignment: Alignment.center,
       child: Text(
         initial,
@@ -220,41 +223,45 @@ class AvatarImage extends StatelessWidget {
       ),
     );
 
-    if (url == null || url!.trim().isEmpty) {
-      return fallbackWidget;
-    }
+    Widget imageContent = fallbackWidget;
 
-    final trimmed = url!.trim();
+    if (url != null && url!.trim().isNotEmpty) {
+      final trimmed = url!.trim();
 
-    if (trimmed.startsWith('data:image')) {
-      try {
-        final comma = trimmed.indexOf(',');
-        if (comma != -1) {
-          final b64 = trimmed.substring(comma + 1);
-          final bytes = base64Decode(b64);
-          return Image.memory(
-            bytes,
-            width: size,
-            height: size,
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => fallbackWidget,
-          );
+      if (trimmed.startsWith('data:image')) {
+        try {
+          final comma = trimmed.indexOf(',');
+          if (comma != -1) {
+            final b64 = trimmed.substring(comma + 1);
+            final bytes = base64Decode(b64);
+            imageContent = Image.memory(
+              bytes,
+              width: size,
+              height: size,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => fallbackWidget,
+            );
+          }
+        } catch (_) {
+          imageContent = fallbackWidget;
         }
-      } catch (_) {
-        return fallbackWidget;
+      } else if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+        imageContent = Image.network(
+          trimmed,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => fallbackWidget,
+        );
       }
     }
 
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-      return Image.network(
-        trimmed,
+    return ClipOval(
+      child: SizedBox(
         width: size,
         height: size,
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => fallbackWidget,
-      );
-    }
-
-    return fallbackWidget;
+        child: imageContent,
+      ),
+    );
   }
 }

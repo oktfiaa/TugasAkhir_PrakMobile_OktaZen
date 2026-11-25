@@ -21,7 +21,7 @@ import '../services/notification_service.dart';
 import '../widgets/auth_widgets.dart';
 import '../widgets/modern_time_picker.dart';
 import '../widgets/modern_date_picker.dart';
-import '../widgets/profile_border_avatar.dart';
+import '../widgets/common_widgets.dart';
 import '../widgets/restaurant_image.dart';
 
 class DetailPage extends StatefulWidget {
@@ -1317,7 +1317,7 @@ class _DetailPageState extends State<DetailPage> {
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: Text('Catatan Rasa Kurator', style: AppText.display(16)),
+              child: Text('Ulasan Pengunjung', style: AppText.display(16)),
             ),
             GestureDetector(
               onTap: _showAddReviewDialog,
@@ -1381,7 +1381,7 @@ class _DetailPageState extends State<DetailPage> {
                 ),
                 const SizedBox(height: 4),
                 const Text(
-                  'Jadilah kurator pertama yang berbagi pengalaman!',
+                  'Jadilah yang pertama berbagi pengalaman!',
                   style: TextStyle(fontSize: 11, color: AppColors.textMuted),
                   textAlign: TextAlign.center,
                 ),
@@ -1425,14 +1425,12 @@ class _DetailPageState extends State<DetailPage> {
         children: [
           Row(
             children: [
-              ProfileBorderAvatar(
-                avatarUrl: r.userAvatar,
-                borderId: r.userActiveBorder,
+              AvatarImage(
+                url: r.userAvatar,
                 size: 32,
-                backgroundColor: colors[colorIdx],
                 fallbackText: (r.userName != null && r.userName!.isNotEmpty)
                     ? r.userName![0].toUpperCase()
-                    : 'K',
+                    : 'U',
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -1440,7 +1438,7 @@ class _DetailPageState extends State<DetailPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      r.userName ?? 'Kurator Rasa',
+                      r.userName ?? 'Pengguna FOODIE',
                       style: const TextStyle(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w700,

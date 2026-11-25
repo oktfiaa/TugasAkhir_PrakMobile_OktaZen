@@ -10,11 +10,9 @@ import '../models/user_ai_profile.dart';
 import '../props/app_colors.dart';
 import '../props/app_text.dart';
 import '../services/ai_recommendation_service.dart';
-import '../services/reward_border_service.dart';
 import '../services/supabase_service.dart';
 import '../services/hive_service.dart';
 import '../services/location_service.dart';
-import '../widgets/ai_reasoning_sheet.dart';
 import '../widgets/restaurant_image.dart';
 import 'ai_profile_page.dart';
 import 'notifications_page.dart';
@@ -61,7 +59,6 @@ class _HomeTabState extends State<HomeTab> {
   int _page = 0;
   int _aiPage = 0;
   StreamSubscription<void>? _profileSub;
-  StreamSubscription<void>? _rewardSub;
 
   @override
   void initState() {
@@ -75,12 +72,6 @@ class _HomeTabState extends State<HomeTab> {
     // Auto-detect lokasi GPS pengguna saat aplikasi dibuka
     LocationService.instance.fetchGpsLocation();
     _profileSub = _svc.onProfileChanged.listen((_) {
-      if (mounted) {
-        _isLoadingData = false;
-        _load();
-      }
-    });
-    _rewardSub = RewardBorderService.instance.onChange.listen((_) {
       if (mounted) {
         _isLoadingData = false;
         _load();
@@ -137,7 +128,6 @@ class _HomeTabState extends State<HomeTab> {
       _onAiProfileUpdated,
     );
     _profileSub?.cancel();
-    _rewardSub?.cancel();
     _pageCtrl.dispose();
     _aiPageCtrl.dispose();
     super.dispose();
@@ -613,96 +603,81 @@ class _HomeTabState extends State<HomeTab> {
   }
 
   Widget _aiActivationBanner() {
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.charcoal,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x14000000),
-            blurRadius: 12,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(
-                  Icons.tune_rounded,
-                  color: AppColors.saffron,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 10),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Rekomendasi Sesuai Seleramu',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Text(
-                      'Personalisasi pencarian kuliner',
-                      style: TextStyle(fontSize: 11, color: Color(0xFFC7CED1)),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'Tentukan preferensi rasa, budget makan, dan lokasi agar kamu selalu menemukan kuliner yang cocok.',
-            style: TextStyle(
-              fontSize: 11.5,
-              height: 1.45,
-              color: Colors.white.withValues(alpha: 0.85),
+    return GestureDetector(
+      onTap: () => Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const AiProfilePage())),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: HomeColors.restoCardBackground,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.line.withValues(alpha: 0.6)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
-          ),
-          const SizedBox(height: 14),
-          GestureDetector(
-            onTap: () => Navigator.of(context)
-                .push(MaterialPageRoute(builder: (_) => const AiProfilePage())),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
               decoration: BoxDecoration(
-                color: AppColors.orange,
+                color: AppColors.tint(AppColors.orange, 0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
+              child: const Icon(
+                Icons.tune_rounded,
+                color: AppColors.orange,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.tune_rounded, size: 15, color: Colors.white),
-                  SizedBox(width: 6),
                   Text(
-                    'Atur Preferensi',
+                    'Rekomendasi Sesuai Selera',
                     style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.charcoal,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'Atur preferensi rasa & budget makanmu',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textMuted,
                     ),
                   ),
                 ],
               ),
             ),
-          ),
-        ],
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(
+                color: AppColors.orange,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Text(
+                'Atur',
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -711,7 +686,7 @@ class _HomeTabState extends State<HomeTab> {
     return Column(
       children: [
         SizedBox(
-          height: 285,
+          height: 205,
           child: PageView.builder(
             controller: _aiPageCtrl,
             padEnds: false,
@@ -750,30 +725,29 @@ class _HomeTabState extends State<HomeTab> {
   Widget _aiCard(AiRecommendationResult result) {
     final r = result.restaurant;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Gambar dengan badge AI Match & Jarak
-          GestureDetector(
-            onTap: () => _open(r),
-            child: ClipRRect(
+    return GestureDetector(
+      onTap: () => _open(r),
+      child: Container(
+        decoration: BoxDecoration(
+          color: HomeColors.restoCardBackground,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
               borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(22),
+                top: Radius.circular(18),
               ),
               child: SizedBox(
-                height: 135,
+                height: 120,
                 width: double.infinity,
                 child: Stack(
                   fit: StackFit.expand,
@@ -783,51 +757,10 @@ class _HomeTabState extends State<HomeTab> {
                       category: r.category,
                       dishType: r.dishType,
                     ),
-                    DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.black.withValues(alpha: 0.35),
-                            Colors.transparent,
-                            Colors.black.withValues(alpha: 0.70),
-                          ],
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      top: 10,
-                      left: 10,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 9,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.orange,
-                          borderRadius: BorderRadius.circular(8),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.2),
-                              blurRadius: 4,
-                            ),
-                          ],
-                        ),
-                        child: Text(
-                          result.matchBadge,
-                          style: const TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
                     if (result.distanceKm > 0)
                       Positioned(
-                        top: 10,
-                        right: 10,
+                        top: 8,
+                        right: 8,
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 8,
@@ -849,7 +782,7 @@ class _HomeTabState extends State<HomeTab> {
                               Text(
                                 '${result.distanceKm.toStringAsFixed(1)} km',
                                 style: const TextStyle(
-                                  fontSize: 9.5,
+                                  fontSize: 10,
                                   fontWeight: FontWeight.w700,
                                   color: Colors.white,
                                 ),
@@ -858,156 +791,60 @@ class _HomeTabState extends State<HomeTab> {
                           ),
                         ),
                       ),
-                    Positioned(
-                      bottom: 8,
-                      left: 12,
-                      right: 12,
-                      child: Text(
-                        r.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 14.5,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
             ),
-          ),
-          // Info konten & reasoning
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        r.category,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textMuted,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    r.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.charcoal,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '${r.category} • ${r.priceRange}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textMuted,
+                          ),
                         ),
                       ),
-                    ),
-                    const Text(
-                      ' • ',
-                      style: TextStyle(color: AppColors.textMuted),
-                    ),
-                    Flexible(
-                      child: Text(
-                        r.priceRange,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      const Icon(
+                        Icons.star_rounded,
+                        size: 14,
+                        color: AppColors.orange,
+                      ),
+                      const SizedBox(width: 2),
+                      Text(
+                        '${r.rating}',
                         style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w800,
                           color: AppColors.charcoal,
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 4),
-                    const Icon(
-                      Icons.star_rounded,
-                      size: 14,
-                      color: AppColors.orange,
-                    ),
-                    const SizedBox(width: 2),
-                    Text(
-                      '${r.rating}',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.charcoal,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 7),
-                // AI Reason chips
-                Wrap(
-                  spacing: 4,
-                  runSpacing: 4,
-                  children: result.tags.map((t) {
-                    return Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 7,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.tint(AppColors.orange, 0.10),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        t,
-                        style: const TextStyle(
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.orange,
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 8),
-                // Tombol Kenapa AI Memilihkan Ini
-                GestureDetector(
-                  onTap: () => showAiReasoningSheet(
-                    context,
-                    result: result,
-                    onOpenDetail: () => _open(r),
+                    ],
                   ),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF5F3EF),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Row(
-                      children: [
-                        Icon(
-                          Icons.psychology_rounded,
-                          size: 14,
-                          color: AppColors.orange,
-                        ),
-                        SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            'Kenapa AI merekomendasikan ini?',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.charcoal,
-                            ),
-                          ),
-                        ),
-                        Icon(
-                          Icons.arrow_forward_ios_rounded,
-                          size: 10,
-                          color: AppColors.textMuted,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

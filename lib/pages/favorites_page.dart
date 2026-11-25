@@ -19,22 +19,15 @@ class FavoritesPage extends StatefulWidget {
 }
 
 class _FavoritesPageState extends State<FavoritesPage> {
-  int _selectedTab = 0;
-
   List<Restaurant>? _favorites;
   bool _favLoading = true;
   String? _favError;
-
-  List<Map<String, dynamic>>? _history;
-  bool _histLoading = true;
-  String? _histError;
   StreamSubscription<Set<String>>? _favSub;
 
   @override
   void initState() {
     super.initState();
     _loadFavorites();
-    _loadHistory();
     _favSub = SupabaseService.instance.favoritesStream.listen((_) {
       if (mounted) _loadFavorites();
     });
@@ -61,21 +54,6 @@ class _FavoritesPageState extends State<FavoritesPage> {
     }
   }
 
-  Future<void> _loadHistory() async {
-    setState(() {
-      _histLoading = true;
-      _histError = null;
-    });
-    try {
-      final list = await SupabaseService.instance.getSearchHistory();
-      if (mounted) setState(() => _history = list);
-    } catch (e) {
-      if (mounted) setState(() => _histError = e.toString());
-    } finally {
-      if (mounted) setState(() => _histLoading = false);
-    }
-  }
-
   Future<void> _removeFavorite(Restaurant r) async {
     await SupabaseService.instance.toggleFavorite(r.id);
     if (!mounted) return;
@@ -89,40 +67,6 @@ class _FavoritesPageState extends State<FavoritesPage> {
         duration: const Duration(seconds: 1),
       ),
     );
-  }
-
-  Future<void> _clearAllHistory() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Hapus Riwayat?'),
-        content: const Text(
-          'Semua riwayat pencarian akan dihapus secara permanen.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Hapus', style: TextStyle(color: AppColors.red)),
-          ),
-        ],
-      ),
-    );
-    if (ok == true) {
-      await SupabaseService.instance.clearSearchHistory();
-      if (mounted) {
-        setState(() => _history = []);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Riwayat pencarian telah dibersihkan'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    }
   }
 
   void _openDetail(Restaurant r) {
@@ -139,10 +83,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
           child: Column(
             children: [
               _header(),
-              _tabBar(),
-              Expanded(
-                child: _selectedTab == 0 ? _favoritesTab() : _historyTab(),
-              ),
+              Expanded(child: _favoritesTab()),
             ],
           ),
         ),
@@ -174,77 +115,15 @@ class _FavoritesPageState extends State<FavoritesPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Koleksi & Favorit', style: AppText.display(20)),
+                Text('Restoran Favorit', style: AppText.display(20)),
                 const Text(
-                  'Daftar kuliner tersimpan dan riwayat kunjunganmu',
+                  'Daftar kuliner pilihan yang kamu simpan',
                   style: TextStyle(fontSize: 11, color: AppColors.textMuted),
                 ),
               ],
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _tabBar() {
-    final count = _favorites?.length ?? 0;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Container(
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x06000000),
-              blurRadius: 8,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: _tabButton(0, 'Favorit ($count)', Icons.favorite_rounded),
-            ),
-            Expanded(child: _tabButton(1, 'Riwayat', Icons.history_rounded)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _tabButton(int index, String label, IconData icon) {
-    final active = _selectedTab == index;
-    return GestureDetector(
-      onTap: () => setState(() => _selectedTab = index),
-      child: Container(
-        height: 38,
-        decoration: BoxDecoration(
-          color: active ? AppColors.greenDark : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              size: 16,
-              color: active ? AppColors.yellow : AppColors.textMuted,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: active ? Colors.white : AppColors.textMuted,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -279,95 +158,6 @@ class _FavoritesPageState extends State<FavoritesPage> {
             onRemove: () => _removeFavorite(r),
           );
         },
-      ),
-    );
-  }
-
-  Widget _historyTab() {
-    if (_histLoading) {
-      return const Center(
-        child: CircularProgressIndicator(color: AppColors.orange),
-      );
-    }
-    if (_histError != null) {
-      return _errorState(_histError!, _loadHistory);
-    }
-    if (_history == null || _history!.isEmpty) {
-      return _emptyState(
-        Icons.history,
-        'Belum ada riwayat',
-        'Pencarian yang kamu lakukan akan tersimpan di sini.',
-      );
-    }
-    return RefreshIndicator(
-      onRefresh: _loadHistory,
-      color: AppColors.orange,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'RIWAYAT PENCARIAN',
-                style: const TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textMuted,
-                  letterSpacing: 0.8,
-                ),
-              ),
-              GestureDetector(
-                onTap: _clearAllHistory,
-                child: const Text(
-                  'Hapus Semua',
-                  style: TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.red,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          ..._history!.map(_historyTile),
-        ],
-      ),
-    );
-  }
-
-  Widget _historyTile(Map<String, dynamic> item) {
-    final query = item['query'] as String? ?? '';
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x05000000),
-            blurRadius: 6,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.search, size: 18, color: AppColors.textMuted),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              query,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textDark,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

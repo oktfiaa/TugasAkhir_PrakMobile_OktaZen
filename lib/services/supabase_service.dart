@@ -12,7 +12,6 @@ import '../models/review.dart';
 import '../models/seed_data.dart';
 import '../models/course_feedback.dart';
 import 'hive_service.dart';
-import 'reward_border_service.dart';
 
 class SupabaseService {
   SupabaseService._() {
@@ -41,7 +40,7 @@ class SupabaseService {
   String? _demoUserId;
   void setDemoUser(String? id) => _demoUserId = id;
   String? get userId => currentUser?.id ?? _demoUserId;
-  String curatorName = 'Kurator Rasa';
+  String curatorName = 'Pengguna FOODIE';
   String get guestName => curatorName;
   set guestName(String val) => curatorName = val;
 
@@ -300,7 +299,7 @@ class SupabaseService {
     _localSearchHistory.clear();
     _localBonusPoints = 0;
     _demoUserId = null;
-    curatorName = 'Kurator Rasa';
+    curatorName = 'Pengguna FOODIE';
     _initialized = false;
     _favoritesController.add({});
     _profileChangedController.add(null);
@@ -396,8 +395,7 @@ class SupabaseService {
           prefs.getString('foodie_current_display_name') ??
           prefs.getString('foodie_last_user_name');
       localAvatar = prefs.getString('foodie_avatar_$keyUid');
-      localActiveBorder = RewardBorderService.instance.activeBorderId ??
-          prefs.getString('foodie_active_border_$keyUid') ??
+      localActiveBorder = prefs.getString('foodie_active_border_$keyUid') ??
           prefs.getString('foodie_active_border_global') ??
           prefs.getString('foodie_active_border_guest') ??
           prefs.getString('foodie_active_border_guest_mhs') ??
@@ -1924,7 +1922,7 @@ class SupabaseService {
       // Gabungkan nama, avatar, & border aktif terkini ke setiap review
       remote = rawList.map((e) {
         final uid = e['user_id']?.toString() ?? '';
-        final resolvedName = userNames[uid] ?? e['user_name'] ?? 'Kurator Rasa';
+        final resolvedName = userNames[uid] ?? e['user_name'] ?? 'Pengguna FOODIE';
         final resolvedAvatar = userAvatars[uid] ?? e['user_avatar'];
         final resolvedBorder = userBorders[uid] ?? e['user_active_border'];
         return Review.fromJson({
@@ -2410,74 +2408,18 @@ class SupabaseService {
       } catch (err) {
         debugPrint('getCourseFeedbacks fetch profiles basic error: $err');
       }
-
-      // Coba ambil active_border_id jika kolom ada di tabel profiles
-      try {
-        final borderRes = await _client
-            .from('profiles')
-            .select('id, active_border_id')
-            .inFilter('id', userIds);
-        for (final p in borderRes as List) {
-          final uid = p['id']?.toString() ?? '';
-          final border = p['active_border_id']?.toString();
-          if (uid.isNotEmpty && border != null && border.isNotEmpty) {
-            userBorders[uid] = border;
-          }
-        }
-      } catch (_) {}
     }
 
-    // Periksa preferensi lokal pengguna saat ini jika ada
-    final currentUid = userId;
-    final myActiveBorder = RewardBorderService.instance.activeBorderId;
-    if (currentUid != null) {
-      if (myActiveBorder != null && myActiveBorder.isNotEmpty) {
-        userBorders[currentUid] = myActiveBorder;
-      }
-      try {
-        final prefs = await SharedPreferences.getInstance();
-        final localBorder = myActiveBorder ??
-            prefs.getString('foodie_active_border_$currentUid') ??
-            prefs.getString('foodie_active_border_global') ??
-            prefs.getString('foodie_active_border_guest');
-        if (localBorder != null && localBorder.isNotEmpty) {
-          userBorders[currentUid] = localBorder;
-        }
-      } catch (_) {}
-    }
-    if (myActiveBorder != null && myActiveBorder.isNotEmpty) {
-      userBorders['guest'] = myActiveBorder;
-      userBorders['guest_mhs'] = myActiveBorder;
-    }
-
-    // Sinkronkan ulasan lama milik pengguna saat ini jika belum menyematkan border di Supabase
-    if (currentUid != null && myActiveBorder != null && myActiveBorder.isNotEmpty) {
-      () async {
-        try {
-          final myRows = rawList.where((e) => e['user_id']?.toString() == currentUid).toList();
-          for (final row in myRows) {
-            final rawAv = row['user_avatar']?.toString() ?? '';
-            if (!rawAv.contains('#border=$myActiveBorder')) {
-              final newAv = CourseFeedback.encodeAvatar(rawAv, myActiveBorder);
-              await _client.from('course_feedback').update({'user_avatar': newAv}).eq('id', row['id']);
-            }
-          }
-        } catch (_) {}
-      }();
-    }
-
-    // Gabungkan data profil dan border aktif ke setiap item CourseFeedback
+    // Gabungkan data profil ke setiap item CourseFeedback
     final list = rawList.map((e) {
       final uid = e['user_id']?.toString() ?? '';
       final resolvedName = userNames[uid] ?? e['user_name'] ?? 'Mahasiswa';
       final resolvedAvatar = userAvatars[uid] ?? e['user_avatar'];
-      final resolvedBorder = userBorders[uid] ?? e['user_active_border'] ?? e['active_border_id'];
 
       return CourseFeedback.fromJson({
         ...e,
         'user_name': resolvedName,
         'user_avatar': resolvedAvatar,
-        'user_active_border': resolvedBorder,
       });
     }).toList();
 
@@ -2503,9 +2445,7 @@ class SupabaseService {
         guestName;
     final avatar = profile?.avatarUrl ??
         currentUser?.userMetadata?['avatar_url'] as String?;
-    final activeBorder = RewardBorderService.instance.activeBorderId ??
-        profile?.activeBorderId ??
-        await RewardBorderService.instance.getActiveBorderId();
+    final activeBorder = profile?.activeBorderId;
 
     final payload = <String, dynamic>{
       'user_id': uid,
@@ -2587,8 +2527,8 @@ class SupabaseService {
     required String saran,
     required int rating,
   }) async {
-    final activeBorder = RewardBorderService.instance.activeBorderId;
     final profile = await getProfile();
+    final activeBorder = profile?.activeBorderId;
     final avatar = profile?.avatarUrl ?? currentUser?.userMetadata?['avatar_url'] as String?;
 
     final payload = <String, dynamic>{

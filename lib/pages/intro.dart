@@ -65,7 +65,7 @@ class _IntroPageState extends State<IntroPage>
                     ? (user.userMetadata!['name'] as String).trim()
                     : (user.email != null && user.email!.isNotEmpty)
                         ? user.email!.split('@').first
-                        : 'Kurator Rasa';
+                        : 'Pengguna FOODIE';
 
         final biometricEnrolled =
             await FaceBiometricService.instance.isFaceEnrolled(

@@ -17,21 +17,17 @@ import '../services/ai_recommendation_service.dart';
 import '../services/face_biometric_service.dart';
 import '../services/supabase_service.dart';
 import '../services/hive_service.dart';
-import '../services/gemini_chat_service.dart';
 import '../services/notification_service.dart';
 import '../widgets/auth_widgets.dart';
 import '../widgets/common_widgets.dart';
 import '../widgets/face_id_scanner_sheet.dart';
 import 'ai_profile_page.dart';
 import 'detail_page.dart';
-import 'favorites_page.dart';
 import 'intro.dart';
 import 'notifications_page.dart';
 import 'saran_kesan_page.dart';
-import '../widgets/profile_border_avatar.dart';
 import '../widgets/modern_time_picker.dart';
 import '../widgets/restaurant_image.dart';
-import '../services/reward_border_service.dart';
 
 class ProfileTab extends StatefulWidget {
   final String name;
@@ -63,22 +59,19 @@ class _ProfileTabState extends State<ProfileTab>
   String _mealLabel = 'Makan Siang';
   Profile? _profile;
   UserAiProfile? _aiProfile;
-  Map<String, int> _stats = {'favorites': 0, 'reviews': 0};
+  Map<String, int> _stats = {'reviews': 0};
   bool _loading = true;
 
-  // Tab controller untuk JEJAK KULINER (Ulasan, Favorit, Pencarian)
-  late final TabController _histTab = TabController(length: 3, vsync: this);
+  // Tab controller untuk JEJAK KULINER (Ulasan, Pencarian)
+  late final TabController _histTab = TabController(length: 2, vsync: this);
 
-  // Data history pencarian, ulasan & resto favorit
+  // Data history pencarian & ulasan
   List<Map<String, dynamic>> _searchHistory = [];
   List<Review> _myReviews = [];
-  List<Restaurant> _favRestaurants = [];
   bool _histLoading = true;
 
   StreamSubscription<void>? _profileSub;
-  StreamSubscription<void>? _rewardSub;
   StreamSubscription<Review>? _reviewAddedSub;
-  StreamSubscription<Set<String>>? _favSub;
 
   @override
   void initState() {
@@ -113,11 +106,6 @@ class _ProfileTabState extends State<ProfileTab>
       _load();
     });
 
-    _rewardSub = RewardBorderService.instance.onChange.listen((_) {
-      if (!mounted) return;
-      _load();
-    });
-
     _reviewAddedSub = svc.onReviewAdded.listen((rev) {
       if (!mounted) return;
       setState(() {
@@ -125,18 +113,6 @@ class _ProfileTabState extends State<ProfileTab>
           _myReviews.insert(0, rev);
         }
         _stats['reviews'] = (_stats['reviews'] ?? 0) + 1;
-        if (_profile != null) {
-          _profile = _profile!.copyWith(points: _profile!.points + 20);
-        }
-      });
-      _load();
-      _loadHistory();
-    });
-
-    _favSub = svc.favoritesStream.listen((favs) {
-      if (!mounted) return;
-      setState(() {
-        _stats['favorites'] = favs.length;
       });
       _load();
       _loadHistory();
@@ -159,9 +135,7 @@ class _ProfileTabState extends State<ProfileTab>
       _onAiProfileChanged,
     );
     _profileSub?.cancel();
-    _rewardSub?.cancel();
     _reviewAddedSub?.cancel();
-    _favSub?.cancel();
     _histTab.dispose();
     super.dispose();
   }
@@ -194,7 +168,7 @@ class _ProfileTabState extends State<ProfileTab>
         Supabase.instance.client.auth.currentUser?.email ??
         (_profile?.displayName != null
             ? '${_profile!.displayName.toLowerCase().replaceAll(' ', '.')}@foodie.id'
-            : 'kurator@foodie.id');
+            : 'user@foodie.id');
     final currentName = _profile?.displayName ?? widget.name;
 
     if (val) {
@@ -434,14 +408,11 @@ class _ProfileTabState extends State<ProfileTab>
     final results = await Future.wait([
       svc.getSearchHistory(),
       svc.getUserReviews(),
-      svc.getFavoriteRestaurants(),
     ]);
     if (!mounted) return;
     setState(() {
       _searchHistory = results[0] as List<Map<String, dynamic>>;
       _myReviews = results[1] as List<Review>;
-      _favRestaurants = results[2] as List<Restaurant>;
-      _stats['favorites'] = _favRestaurants.length;
       _stats['reviews'] = _myReviews.length;
       _histLoading = false;
     });
@@ -668,172 +639,6 @@ class _ProfileTabState extends State<ProfileTab>
                         );
                       }
                     },
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  void _showGeminiPersonaAnalysisSheet() {
-    if (_aiProfile == null || !_aiProfile!.isCompleted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Lengkapi profil kuliner terlebih dahulu untuk dianalisis oleh Gemini AI!',
-          ),
-          backgroundColor: AppColors.orange,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => const AiProfilePage()))
-          .then((_) => _loadAiProfile());
-      return;
-    }
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => FutureBuilder<String>(
-        future: GeminiChatService.instance.generatePersonaAnalysis(_aiProfile!),
-        builder: (ctx, snapshot) {
-          final isLoading = snapshot.connectionState == ConnectionState.waiting;
-          final analysis =
-              snapshot.data ??
-              'Menganalisis persona dengan model Google Gemini 1.5 Flash...';
-
-          return Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-            ),
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.line,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppColors.orange.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(
-                        Icons.auto_awesome_rounded,
-                        color: AppColors.orange,
-                        size: 22,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Analisis Persona Gemini AI',
-                            style: TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.charcoal,
-                            ),
-                          ),
-                          Text(
-                            'Ditenagai Google Gemini 1.5 Flash LLM',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: AppColors.slateBlue,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.cream,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.line),
-                  ),
-                  child: isLoading
-                      ? const Row(
-                          children: [
-                            SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: AppColors.orange,
-                              ),
-                            ),
-                            SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                'Menghubungi Google Gemini 1.5 Flash...',
-                                style: TextStyle(
-                                  fontSize: 12.5,
-                                  color: AppColors.textDark,
-                                ),
-                              ),
-                            ),
-                          ],
-                        )
-                      : Text(
-                          analysis,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            height: 1.5,
-                            color: AppColors.charcoal,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.charcoal,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      Navigator.of(context)
-                          .push(
-                            MaterialPageRoute(
-                              builder: (_) => const AiProfilePage(),
-                            ),
-                          )
-                          .then((_) => _loadAiProfile());
-                    },
-                    child: const Text(
-                      'Edit Preferensi & Persona',
-                      style: TextStyle(fontWeight: FontWeight.w700),
-                    ),
                   ),
                 ),
               ],
@@ -1078,7 +883,7 @@ class _ProfileTabState extends State<ProfileTab>
                     color: AppColors.textDark,
                   ),
                   decoration: InputDecoration(
-                    hintText: 'Nama kurator Anda',
+                    hintText: 'Nama Anda',
                     filled: true,
                     fillColor: AppColors.surfaceSubtle,
                     contentPadding: const EdgeInsets.symmetric(
@@ -1452,25 +1257,10 @@ class _ProfileTabState extends State<ProfileTab>
       final results = await Future.wait([
         SupabaseService.instance.getProfile(),
         SupabaseService.instance.getUserStats(),
-        RewardBorderService.instance.getActiveBorderId(),
-        RewardBorderService.instance.getUserPoints(),
       ]);
       if (!mounted) return;
-      var prof = results[0] as Profile?;
+      final prof = results[0] as Profile?;
       final stats = results[1] as Map<String, int>;
-      final activeBorder = results[2] as String?;
-      final pts = results[3] as int;
-
-      if (prof != null) {
-        prof = Profile(
-          id: prof.id,
-          displayName: prof.displayName,
-          avatarUrl: prof.avatarUrl,
-          activeBorderId: activeBorder ?? prof.activeBorderId,
-          points: pts,
-          createdAt: prof.createdAt,
-        );
-      }
 
       setState(() {
         _profile = prof;
@@ -1518,12 +1308,12 @@ class _ProfileTabState extends State<ProfileTab>
         ? _profile!.displayName
         : widget.name.trim().isNotEmpty
         ? widget.name.trim()
-        : (currentUser?.userMetadata?['name'] as String? ?? 'Kurator Rasa');
+        : (currentUser?.userMetadata?['name'] as String? ?? 'Pengguna FOODIE');
     final email =
         currentUser?.email ??
         (widget.name.isNotEmpty
-            ? '${widget.name.toLowerCase().replaceAll(' ', '.')}@culinary.id'
-            : 'kurator@foodie.id');
+            ? '${widget.name.toLowerCase().replaceAll(' ', '.')}@foodie.id'
+            : 'user@foodie.id');
     return PageBackground(
       child: SafeArea(
         bottom: false,
@@ -1551,12 +1341,10 @@ class _ProfileTabState extends State<ProfileTab>
                     ],
                     const SizedBox(height: 14),
                     _aiPersonaCard(),
-                    const SizedBox(height: 14),
-                    _statsRow(),
                     const SizedBox(height: 18),
 
                     // ── Jejak Kuliner ──
-                    _sectionLabel('JEJAK KULINER KURATOR'),
+                    _sectionLabel('JEJAK KULINER'),
                     const SizedBox(height: 8),
                     _historySection(),
                     const SizedBox(height: 20),
@@ -1673,16 +1461,6 @@ class _ProfileTabState extends State<ProfileTab>
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.favorite_rounded, size: 13),
-                      const SizedBox(width: 4),
-                      Text('Favorit (${_favRestaurants.length})'),
-                    ],
-                  ),
-                ),
-                Tab(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
                       const Icon(Icons.rate_review_rounded, size: 13),
                       const SizedBox(width: 4),
                       Text('Ulasan (${_myReviews.length})'),
@@ -1711,7 +1489,6 @@ class _ProfileTabState extends State<ProfileTab>
                 : TabBarView(
                     controller: _histTab,
                     children: [
-                      _favoritesTab(),
                       _reviewsTab(),
                       _searchHistoryTab(),
                     ],
@@ -1893,210 +1670,6 @@ class _ProfileTabState extends State<ProfileTab>
           ),
         );
       },
-    );
-  }
-
-  Widget _favoritesTab() {
-    if (_favRestaurants.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.orange.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.favorite_border_rounded,
-                  size: 26,
-                  color: AppColors.orange,
-                ),
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                'Belum Ada Restoran Favorit',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textDark,
-                ),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                'Tandai ikon hati pada kuliner yang kamu suka untuk diakses cepat di sini.',
-                style: TextStyle(fontSize: 11, color: AppColors.textMuted),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 8, right: 8, top: 4, bottom: 6),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '${_favRestaurants.length} Kuliner Tersimpan',
-                style: const TextStyle(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textMuted,
-                ),
-              ),
-              InkWell(
-                onTap: () async {
-                  await Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const FavoritesPage()),
-                  );
-                  _load();
-                  _loadHistory();
-                },
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Buka Halaman Favorit',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.orange,
-                      ),
-                    ),
-                    SizedBox(width: 2),
-                    Icon(
-                      Icons.arrow_forward_ios_rounded,
-                      size: 10,
-                      color: AppColors.orange,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-            itemCount: _favRestaurants.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 6),
-            itemBuilder: (ctx, i) {
-              final r = _favRestaurants[i];
-              return InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: () async {
-                  await Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => DetailPage(restaurant: r),
-                    ),
-                  );
-                  _load();
-                  _loadHistory();
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: AppColors.line.withValues(alpha: 0.6),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: SizedBox(
-                          width: 48,
-                          height: 48,
-                          child: RestaurantImage(
-                            imageUrl: r.imageUrl,
-                            category: r.category,
-                            dishType: r.dishType,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              r.name,
-                              style: const TextStyle(
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.textDark,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 2),
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.star_rounded,
-                                  size: 12.5,
-                                  color: AppColors.orange,
-                                ),
-                                const SizedBox(width: 2),
-                                Text(
-                                  r.rating.toStringAsFixed(1),
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.textDark,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                Expanded(
-                                  child: Text(
-                                    '• ${r.category}',
-                                    style: const TextStyle(
-                                      fontSize: 10.5,
-                                      color: AppColors.textMuted,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              r.priceRange.isNotEmpty
-                                  ? r.priceRange
-                                  : 'Harga terjangkau',
-                              style: const TextStyle(
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.greenDark,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Icon(
-                        Icons.chevron_right_rounded,
-                        size: 16,
-                        color: AppColors.textMuted,
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
     );
   }
 
@@ -2287,7 +1860,6 @@ class _ProfileTabState extends State<ProfileTab>
   Widget _aiPersonaCard() {
     final p = _aiProfile;
     final bool isComplete = p != null && p.isCompleted;
-    final int progress = p?.completionPercentage ?? 0;
 
     return GestureDetector(
       onTap: () async {
@@ -2296,180 +1868,67 @@ class _ProfileTabState extends State<ProfileTab>
         _loadAiProfile();
       },
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: isComplete
-                ? [const Color(0xFF1C1D1F), const Color(0xFF2C2E33)]
-                : [const Color(0xFF202024), const Color(0xFF382F24)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(20),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.line.withValues(alpha: 0.6)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.orange.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: AppColors.tint(AppColors.orange, 0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.tune_rounded,
+                color: AppColors.orange,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Preferensi & Persona Kuliner',
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.charcoal,
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.tune_rounded,
-                    color: AppColors.orange,
-                    size: 18,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Row(
-                        children: [
-                          Text(
-                            'Preferensi & Persona Kuliner',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        isComplete
-                            ? p.personaSummary
-                            : 'Lengkapi data diri untuk rekomendasi personal',
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          color: Colors.white.withValues(alpha: 0.75),
-                          fontWeight: FontWeight.w500,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isComplete ? AppColors.greenDark : AppColors.orange,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    isComplete ? 'Aktif' : '$progress%',
+                  const SizedBox(height: 3),
+                  Text(
+                    isComplete
+                        ? p.personaSummary
+                        : 'Atur preferensi kuliner untuk rekomendasi AI personal',
                     style: const TextStyle(
                       fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
+                      color: AppColors.textMuted,
+                      fontWeight: FontWeight.w500,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: progress / 100.0,
-                minHeight: 5,
-                backgroundColor: Colors.white.withValues(alpha: 0.15),
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  isComplete ? AppColors.green : AppColors.orange,
-                ),
+                ],
               ),
             ),
-            const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  isComplete
-                      ? 'Data diri, selera rasa & tempat tinggal terhubung'
-                      : 'Kelengkapan: $progress% • Klik untuk lengkapi profil',
-                  style: TextStyle(
-                    fontSize: 10.5,
-                    color: Colors.white.withValues(alpha: 0.65),
-                  ),
-                ),
-                const Row(
-                  children: [
-                    Text(
-                      'Atur',
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.yellow,
-                      ),
-                    ),
-                    Icon(
-                      Icons.chevron_right_rounded,
-                      size: 16,
-                      color: AppColors.yellow,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            InkWell(
-              onTap: _showGeminiPersonaAnalysisSheet,
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.2),
-                  ),
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.auto_awesome_rounded,
-                      color: AppColors.saffron,
-                      size: 15,
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      'Konsultasi Persona Gemini AI 1.5 Flash',
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                    SizedBox(width: 4),
-                    Icon(
-                      Icons.chevron_right_rounded,
-                      color: Colors.white70,
-                      size: 16,
-                    ),
-                  ],
-                ),
-              ),
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 14,
+              color: AppColors.textMuted,
             ),
           ],
         ),
@@ -2498,9 +1957,8 @@ class _ProfileTabState extends State<ProfileTab>
             onTap: _showEditProfile,
             child: Stack(
               children: [
-                ProfileBorderAvatar(
-                  avatarUrl: _profile?.avatarUrl,
-                  borderId: _profile?.activeBorderId,
+                AvatarImage(
+                  url: _profile?.avatarUrl,
                   size: 56,
                   fallbackText: name.isNotEmpty ? name : 'F',
                 ),
@@ -2586,36 +2044,6 @@ class _ProfileTabState extends State<ProfileTab>
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
-                const SizedBox(height: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.verified_user_rounded,
-                        size: 12,
-                        color: AppColors.saffron,
-                      ),
-                      SizedBox(width: 4),
-                      Text(
-                        'Kurator Kuliner',
-                        style: TextStyle(
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               ],
             ),
           ),
@@ -2650,107 +2078,7 @@ class _ProfileTabState extends State<ProfileTab>
     );
   }
 
-  Widget _statsRow() {
-    final favCount = _favRestaurants.isNotEmpty
-        ? _favRestaurants.length
-        : (_stats['favorites'] ?? 0);
-    final revCount = _myReviews.isNotEmpty
-        ? _myReviews.length
-        : (_stats['reviews'] ?? 0);
 
-    return Row(
-      children: [
-        _stat(
-          '$favCount',
-          'Favorit Tersimpan',
-          icon: Icons.favorite_rounded,
-          onTap: () {
-            _histTab.animateTo(0);
-          },
-        ),
-        const SizedBox(width: 12),
-        _stat(
-          '$revCount',
-          'Ulasan Saya',
-          icon: Icons.rate_review_rounded,
-          onTap: () {
-            _histTab.animateTo(1);
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _stat(
-    String value,
-    String label, {
-    VoidCallback? onTap,
-    IconData? icon,
-    bool isPoints = false,
-  }) {
-    return Expanded(
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isPoints
-                    ? AppColors.orange.withValues(alpha: 0.28)
-                    : AppColors.line.withValues(alpha: 0.4),
-              ),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x06000000),
-                  blurRadius: 10,
-                  offset: Offset(0, 3),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (icon != null) ...[
-                      Icon(
-                        icon,
-                        size: 14,
-                        color: isPoints ? AppColors.orange : AppColors.charcoal,
-                      ),
-                      const SizedBox(width: 4),
-                    ],
-                    Text(
-                      value,
-                      style: AppText.display(18).copyWith(
-                        color: isPoints ? AppColors.orange : AppColors.textDark,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w600,
-                    color: isPoints ? AppColors.orange : AppColors.textMuted,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _sectionLabel(String label) {
     return Text(

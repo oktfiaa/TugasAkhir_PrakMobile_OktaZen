@@ -1107,7 +1107,7 @@ class _ExploreTabState extends State<ExploreTab> {
                 const Text(
                   'FOODIE saat ini hanya mendedikasikan eksplorasi kuliner '
                   'terkurasi di wilayah Daerah Istimewa Yogyakarta dan Jawa '
-                  'Tengah untuk menjaga keaslian rasa kurator kami.',
+                  'Tengah untuk menjaga keaslian rasa kuliner pilihan kami.',
                   style: TextStyle(
                     fontSize: 11,
                     height: 1.5,

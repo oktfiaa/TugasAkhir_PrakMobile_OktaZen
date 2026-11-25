@@ -3,12 +3,10 @@ import 'package:flutter/material.dart';
 
 import '../models/course_feedback.dart';
 import '../models/profile.dart';
-import '../models/reward_border.dart';
 import '../props/app_colors.dart';
 import '../props/app_text.dart';
 import '../services/supabase_service.dart';
-import '../services/reward_border_service.dart';
-import '../widgets/profile_border_avatar.dart';
+import '../widgets/common_widgets.dart';
 
 class SaranKesanPage extends StatefulWidget {
   const SaranKesanPage({super.key});
@@ -21,47 +19,29 @@ class _SaranKesanPageState extends State<SaranKesanPage> {
   List<CourseFeedback> _feedbacks = [];
   bool _isLoading = true;
   StreamSubscription<CourseFeedback>? _subscription;
-  StreamSubscription<void>? _borderSubscription;
 
   @override
   void initState() {
     super.initState();
     _loadFeedbacks();
     _subscribeRealtime();
-    _borderSubscription = RewardBorderService.instance.onChange.listen((_) {
-      if (mounted) setState(() {});
-    });
   }
 
   @override
   void dispose() {
     _subscription?.cancel();
-    _borderSubscription?.cancel();
     super.dispose();
   }
 
   void _subscribeRealtime() {
     _subscription = SupabaseService.instance.onCourseFeedbackAdded.listen((newFb) {
       if (!mounted) return;
-      final currentUserId = SupabaseService.instance.userId ?? 'guest_mhs';
-      final isMyFb = newFb.userId == currentUserId ||
-          (currentUserId == 'guest_mhs' && newFb.userId.startsWith('guest'));
-
-      var resolvedFb = newFb;
-      final myBorder = RewardBorderService.instance.activeBorderId;
-      if (isMyFb && myBorder != null && myBorder.isNotEmpty) {
-        resolvedFb = resolvedFb.copyWith(userActiveBorder: myBorder);
-      }
-
       setState(() {
-        final idx = _feedbacks.indexWhere((f) => f.id == resolvedFb.id);
+        final idx = _feedbacks.indexWhere((f) => f.id == newFb.id);
         if (idx >= 0) {
-          if (resolvedFb.userActiveBorder == null && _feedbacks[idx].userActiveBorder != null) {
-            resolvedFb = resolvedFb.copyWith(userActiveBorder: _feedbacks[idx].userActiveBorder);
-          }
-          _feedbacks[idx] = resolvedFb;
+          _feedbacks[idx] = newFb;
         } else {
-          _feedbacks.insert(0, resolvedFb);
+          _feedbacks.insert(0, newFb);
         }
       });
     });
@@ -116,16 +96,12 @@ class _SaranKesanPageState extends State<SaranKesanPage> {
               rating: rating,
             );
             if (res != null && mounted) {
-              final myBorder = RewardBorderService.instance.activeBorderId;
-              final resolved = (res.userActiveBorder == null && myBorder != null)
-                  ? res.copyWith(userActiveBorder: myBorder)
-                  : res;
               setState(() {
-                final idx = _feedbacks.indexWhere((f) => f.id == resolved.id);
+                final idx = _feedbacks.indexWhere((f) => f.id == res.id);
                 if (idx >= 0) {
-                  _feedbacks[idx] = resolved;
+                  _feedbacks[idx] = res;
                 } else {
-                  _feedbacks.insert(0, resolved);
+                  _feedbacks.insert(0, res);
                 }
               });
               _showSnackBar('Saran & kesan berhasil dibagikan.');
@@ -435,22 +411,10 @@ class _FeedbackCardItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currentUserId = SupabaseService.instance.userId ?? 'guest_mhs';
-    final isMyFeedback = feedback.userId == currentUserId ||
-        (currentUserId == 'guest_mhs' && feedback.userId.startsWith('guest'));
-
-    final myBorder = RewardBorderService.instance.activeBorderId;
-    final effectiveBorderId = (isMyFeedback && myBorder != null && myBorder.isNotEmpty)
-        ? myBorder
-        : feedback.userActiveBorder;
-
-    final border = (effectiveBorderId != null && effectiveBorderId.isNotEmpty)
-        ? RewardBorder.defaultBorders.where((b) => b.id == effectiveBorderId).firstOrNull
-        : null;
-
-    final avatarBgColor = border != null
-        ? border.rarity.color.withValues(alpha: 0.85)
-        : AppColors.paprika;
+    final currentUserId = SupabaseService.instance.userId;
+    final isMyFeedback = currentUserId != null &&
+        (feedback.userId == currentUserId ||
+            (currentUserId == 'guest' && feedback.userId == 'guest'));
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -467,12 +431,9 @@ class _FeedbackCardItem extends StatelessWidget {
         children: [
           Row(
             children: [
-              ProfileBorderAvatar(
-                avatarUrl: feedback.userAvatar,
-                borderId: effectiveBorderId,
-                border: border,
+              AvatarImage(
+                url: feedback.userAvatar,
                 size: 38,
-                backgroundColor: avatarBgColor,
                 fallbackText: feedback.userName.isNotEmpty ? feedback.userName : 'M',
               ),
               const SizedBox(width: 12),
@@ -487,50 +448,18 @@ class _FeedbackCardItem extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 3),
-                    Wrap(
-                      spacing: 4,
-                      runSpacing: 4,
-                      children: [
-                        if (isMyFeedback)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                            decoration: BoxDecoration(
-                              color: AppColors.paprika.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: const Text('Ulasan Anda',
-                                style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: AppColors.paprika)),
-                          ),
-                        if (border != null)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                            decoration: BoxDecoration(
-                              color: border.rarity.color.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(color: border.rarity.color.withValues(alpha: 0.4), width: 0.8),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  border.rarity == BorderRarity.legendary
-                                      ? Icons.workspace_premium_rounded
-                                      : (border.rarity == BorderRarity.epic
-                                          ? Icons.military_tech_rounded
-                                          : Icons.auto_awesome_rounded),
-                                  size: 10,
-                                  color: border.rarity.color,
-                                ),
-                                const SizedBox(width: 3),
-                                Text(border.name,
-                                    style: TextStyle(
-                                        fontSize: 9.5, fontWeight: FontWeight.w700, color: border.rarity.color)),
-                              ],
-                            ),
-                          ),
-                      ],
-                    ),
+                    if (isMyFeedback) ...[
+                      const SizedBox(height: 3),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: AppColors.paprika.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text('Ulasan Anda',
+                            style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: AppColors.paprika)),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -731,17 +660,14 @@ class _FeedbackFormSheetState extends State<_FeedbackFormSheet> {
       _saranController.text = widget.existing!.saran;
       _rating = widget.existing!.rating;
     }
-    final activeBorder = RewardBorderService.instance.activeBorderId;
     SupabaseService.instance.getProfile().then((p) {
       if (!mounted) return;
-      final effectiveBorder = activeBorder ?? p?.activeBorderId;
       setState(() {
-        _profile = p?.copyWith(activeBorderId: effectiveBorder) ??
+        _profile = p ??
             Profile(
               id: SupabaseService.instance.userId ?? 'guest',
               displayName: SupabaseService.instance.guestName,
               avatarUrl: null,
-              activeBorderId: effectiveBorder,
               points: 0,
               createdAt: DateTime.now(),
             );
@@ -935,11 +861,9 @@ class _FeedbackFormSheetState extends State<_FeedbackFormSheet> {
       ),
       child: Row(
         children: [
-          ProfileBorderAvatar(
-            avatarUrl: _profile?.avatarUrl,
-            borderId: RewardBorderService.instance.activeBorderId ?? _profile?.activeBorderId,
+          AvatarImage(
+            url: _profile?.avatarUrl,
             size: 28,
-            backgroundColor: AppColors.paprika,
             fallbackText: _profile?.displayName.isNotEmpty == true ? _profile!.displayName : 'M',
           ),
           const SizedBox(width: 10),
@@ -951,11 +875,9 @@ class _FeedbackFormSheetState extends State<_FeedbackFormSheet> {
                   _profile?.displayName ?? 'Mahasiswa',
                   style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.charcoal),
                 ),
-                Text(
-                  _profile?.activeBorderId != null
-                      ? 'Border aktif: ${RewardBorder.defaultBorders.where((b) => b.id == _profile!.activeBorderId).firstOrNull?.name ?? "Koleksi"}'
-                      : 'Border: Standar (Tanpa Border)',
-                  style: const TextStyle(fontSize: 10, color: AppColors.slateBlue),
+                const Text(
+                  'Mahasiswa Praktikum Mobile',
+                  style: TextStyle(fontSize: 10, color: AppColors.slateBlue),
                 ),
               ],
             ),
