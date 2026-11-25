@@ -208,7 +208,7 @@ class _SaranKesanPageState extends State<SaranKesanPage> {
           children: [
             Text('Saran & Kesan',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.charcoal)),
-            Text('Pemrograman Aplikasi Mobile',
+            Text('Praktikum Pemrograman Mobile',
                 style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.slateBlue)),
           ],
         ),
@@ -322,7 +322,7 @@ class _CourseHeaderBanner extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Mata Kuliah Pemrograman Mobile',
+                      'Praktikum Pemrograman Mobile',
                       style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white),
                     ),
                     Text(
@@ -336,7 +336,7 @@ class _CourseHeaderBanner extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'Ruang berbagi kesan proses belajar dan saran konstruktif untuk pengembangan perkuliahan.',
+            'Ruang berbagi kesan proses praktikum dan saran konstruktif untuk pengembangan modul & asisten praktikum mobile.',
             style: TextStyle(fontSize: 12, height: 1.5, color: Colors.white.withValues(alpha: 0.85)),
           ),
         ],
@@ -829,7 +829,7 @@ class _FeedbackFormSheetState extends State<_FeedbackFormSheet> {
             ),
             const SizedBox(height: 4),
             const Text(
-              'Ulasan Anda tentang Mata Kuliah Pemrograman Aplikasi Mobile',
+              'Ulasan dan evaluasi Anda tentang Praktikum Pemrograman Mobile',
               style: TextStyle(fontSize: 11.5, color: AppColors.slateBlue),
             ),
             if (_profile != null) ...[
@@ -837,7 +837,7 @@ class _FeedbackFormSheetState extends State<_FeedbackFormSheet> {
               _buildProfilePreview(),
             ],
             const SizedBox(height: 18),
-            const Text('Penilaian Mata Kuliah',
+            const Text('Penilaian Pengalaman Praktikum',
                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.charcoal)),
             const SizedBox(height: 6),
             Row(

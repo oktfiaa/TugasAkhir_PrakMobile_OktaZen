@@ -9,14 +9,12 @@ import '../models/restaurant.dart';
 import '../models/user_ai_profile.dart';
 import '../props/app_colors.dart';
 import '../props/app_text.dart';
-import '../utils/format.dart';
 import '../services/ai_recommendation_service.dart';
 import '../services/reward_border_service.dart';
 import '../services/supabase_service.dart';
 import '../services/hive_service.dart';
 import '../services/location_service.dart';
 import '../widgets/ai_reasoning_sheet.dart';
-import '../widgets/decide.dart';
 import '../widgets/restaurant_image.dart';
 import 'ai_profile_page.dart';
 import 'notifications_page.dart';
@@ -59,7 +57,6 @@ class _HomeTabState extends State<HomeTab> {
   List<Restaurant> _picks = []; // Rekomendasi terdekat (LBS)
   List<AiRecommendationResult> _aiPicks = []; // Rekomendasi personal AI
   UserAiProfile? _aiProfile;
-  List<String> _categories = [];
   bool _loading = true;
   int _page = 0;
   int _aiPage = 0;
@@ -206,7 +203,6 @@ class _HomeTabState extends State<HomeTab> {
       setState(() {
         _profile = results[0] as Profile?;
         _picks = restos.take(5).toList();
-        _categories = results[2] as List<String>;
         _aiProfile = aiProf;
         _aiPicks = aiResults.take(6).toList();
         _loading = false;
@@ -225,44 +221,6 @@ class _HomeTabState extends State<HomeTab> {
       widget.onSeeAll?.call();
     }
   }
-
-  IconData _iconFor(String c) {
-    // Normalisasi: lowercase + ganti underscore/tanda hubung → spasi
-    final s = c.toLowerCase().replaceAll('_', ' ').replaceAll('-', ' ');
-    if (s.contains('fast food') ||
-        s.contains('fastfood') ||
-        s.contains('fast') ||
-        s.contains('cepat')) {
-      return Icons.fastfood_rounded;
-    }
-    if (s.contains('food court') ||
-        s.contains('foodcourt') ||
-        s.contains('court') ||
-        s.contains('sentra')) {
-      return Icons.storefront_rounded;
-    }
-    if (s.contains('cafe') ||
-        s.contains('kafe') ||
-        s.contains('coffee') ||
-        s.contains('kopi')) {
-      return Icons.local_cafe_rounded;
-    }
-    if (s.contains('angkringan')) {
-      return Icons.outdoor_grill_rounded;
-    }
-    if (s.contains('warung')) {
-      return Icons.store_mall_directory_rounded;
-    }
-    if (s.contains('resto') ||
-        s.contains('restaurant') ||
-        s.contains('rumah makan')) {
-      return Icons.restaurant_rounded;
-    }
-    return Icons.restaurant_menu_rounded;
-  }
-
-  /// Format label kategori agar rapi (misal fast_food -> Fast Food)
-  String _formatCategoryLabel(String c) => formatCategoryLabel(c);
 
   @override
   Widget build(BuildContext context) {
@@ -289,21 +247,13 @@ class _HomeTabState extends State<HomeTab> {
             padding: const EdgeInsets.fromLTRB(20, 14, 20, 28),
             children: [
               _header(first),
-              const SizedBox(height: 22),
-              _shakeCard(),
-              const SizedBox(height: 22),
-              // ── GPS / Lokasi Widget ──
+              const SizedBox(height: 18),
+              // ── GPS / Lokasi Widget (Modul VI LBS) ──
               _gpsWidget(),
               const SizedBox(height: 22),
-              // ── Rekomendasi Cerdas AI ──
+              // ── Rekomendasi Cerdas AI (Modul V API) ──
               _aiRecommendationSection(),
-              const SizedBox(height: 22),
-              if (_categories.isNotEmpty) ...[
-                Text('Kategori Kuliner', style: AppText.display(20)),
-                const SizedBox(height: 12),
-                _categoryRow(),
-                const SizedBox(height: 26),
-              ],
+              const SizedBox(height: 24),
               Row(
                 children: [
                   Expanded(
@@ -413,163 +363,9 @@ class _HomeTabState extends State<HomeTab> {
                 );
               },
             ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColors.tint(AppColors.orange, 0.15),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.stars_rounded,
-                    size: 12,
-                    color: AppColors.orange,
-                  ),
-                  const SizedBox(width: 3),
-                  Text(
-                    '${_profile?.points ?? 0}',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.charcoal,
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ],
         ),
       ],
-    );
-  }
-
-  // ---------- Curated Shake ----------
-  Widget _shakeCard() {
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: AppColors.charcoal,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.charcoal.withValues(alpha: 0.25),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            right: -50,
-            top: -50,
-            child: Container(
-              width: 170,
-              height: 170,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.orange.withValues(alpha: 0.10),
-              ),
-            ),
-          ),
-          Positioned(
-            right: 30,
-            bottom: -60,
-            child: Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.yellow.withValues(alpha: 0.06),
-              ),
-            ),
-          ),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 9,
-                        vertical: 4,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Bingung mau\nmakan apa?',
-                      style: AppText.display(24)
-                          .copyWith(color: Colors.white, height: 1.15),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Goyangkan HP-mu dan biarkan FOODIE\nmerekomendasikan kuliner terbaik.',
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        height: 1.45,
-                        color: Colors.white.withValues(alpha: 0.7),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    GestureDetector(
-                      onTap: () =>
-                          showDecideSheet(context).then((_) => _load()),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 11,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.orange,
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.casino_rounded,
-                              size: 16,
-                              color: Colors.white,
-                            ),
-                            SizedBox(width: 8),
-                            Text(
-                              'Shake to Decide',
-                              style: TextStyle(
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 10),
-              Container(
-                width: 70,
-                height: 70,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.10),
-                ),
-                child: const Icon(
-                  Icons.restaurant_rounded,
-                  size: 30,
-                  color: AppColors.yellow,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 
@@ -724,58 +520,6 @@ class _HomeTabState extends State<HomeTab> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  // ---------- Kategori ----------
-  Widget _categoryRow() {
-    return SizedBox(
-      height: 92,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: _categories.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 12),
-        itemBuilder: (_, i) {
-          final c = _categories[i];
-          return GestureDetector(
-            // Tap kategori → filter di Explore
-            onTap: () {
-              if (widget.onCategorySelected != null) {
-                widget.onCategorySelected!(c);
-              } else {
-                widget.onSeeAll?.call();
-              }
-            },
-            child: SizedBox(
-              width: 68,
-              child: Column(
-                children: [
-                  Container(
-                    width: 62,
-                    height: 62,
-                    decoration: BoxDecoration(
-                      color: AppColors.greenDark,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Icon(_iconFor(c), size: 27, color: AppColors.orange),
-                  ),
-                  const SizedBox(height: 7),
-                  Text(
-                    _formatCategoryLabel(c),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.charcoal,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
       ),
     );
   }

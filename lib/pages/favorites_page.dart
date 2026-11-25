@@ -11,7 +11,8 @@ import '../widgets/restaurant_image.dart';
 import 'detail_page.dart';
 
 class FavoritesPage extends StatefulWidget {
-  const FavoritesPage({super.key});
+  final bool isTab;
+  const FavoritesPage({super.key, this.isTab = false});
 
   @override
   State<FavoritesPage> createState() => _FavoritesPageState();
@@ -133,14 +134,17 @@ class _FavoritesPageState extends State<FavoritesPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: PageBackground(
-        child: Column(
-          children: [
-            _header(),
-            _tabBar(),
-            Expanded(
-              child: _selectedTab == 0 ? _favoritesTab() : _historyTab(),
-            ),
-          ],
+        child: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              _header(),
+              _tabBar(),
+              Expanded(
+                child: _selectedTab == 0 ? _favoritesTab() : _historyTab(),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -151,26 +155,28 @@ class _FavoritesPageState extends State<FavoritesPage> {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Row(
         children: [
-          InkWell(
-            onTap: () => Navigator.of(context).maybePop(),
-            borderRadius: BorderRadius.circular(8),
-            child: const Padding(
-              padding: EdgeInsets.all(6.0),
-              child: Icon(
-                Icons.arrow_back_ios_new_rounded,
-                size: 20,
-                color: AppColors.textDark,
+          if (!widget.isTab && Navigator.of(context).canPop()) ...[
+            InkWell(
+              onTap: () => Navigator.of(context).maybePop(),
+              borderRadius: BorderRadius.circular(8),
+              child: const Padding(
+                padding: EdgeInsets.all(6.0),
+                child: Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  size: 20,
+                  color: AppColors.textDark,
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 12),
+            const SizedBox(width: 12),
+          ],
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Koleksi & Riwayat', style: AppText.display(18)),
+                Text('Koleksi & Favorit', style: AppText.display(20)),
                 const Text(
-                  'Tersimpan untuk akses cepat',
+                  'Daftar kuliner tersimpan dan riwayat kunjunganmu',
                   style: TextStyle(fontSize: 11, color: AppColors.textMuted),
                 ),
               ],

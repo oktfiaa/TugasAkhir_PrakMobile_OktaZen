@@ -17,18 +17,17 @@ import '../services/ai_recommendation_service.dart';
 import '../services/face_biometric_service.dart';
 import '../services/supabase_service.dart';
 import '../services/hive_service.dart';
+import '../services/gemini_chat_service.dart';
 import '../services/notification_service.dart';
 import '../widgets/auth_widgets.dart';
 import '../widgets/common_widgets.dart';
 import '../widgets/face_id_scanner_sheet.dart';
 import 'ai_profile_page.dart';
-import 'converter_page.dart';
 import 'detail_page.dart';
 import 'favorites_page.dart';
-import 'game_page.dart';
 import 'intro.dart';
+import 'notifications_page.dart';
 import 'saran_kesan_page.dart';
-import 'rewards_shop_page.dart';
 import '../widgets/profile_border_avatar.dart';
 import '../widgets/modern_time_picker.dart';
 import '../widgets/restaurant_image.dart';
@@ -448,526 +447,399 @@ class _ProfileTabState extends State<ProfileTab>
     });
   }
 
-  void _showCoverageDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            const Icon(Icons.map_rounded, color: AppColors.orange, size: 22),
-            const SizedBox(width: 8),
-            Text('Cakupan Wilayah', style: AppText.display(18)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'FOODIE mengkurasi warisan kuliner secara eksklusif pada wilayah:',
-              style: TextStyle(
-                fontSize: 12.5,
-                color: AppColors.textMuted,
-                height: 1.4,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x06000000),
-                    blurRadius: 8,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '1. Daerah Istimewa Yogyakarta (DIY)',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textDark,
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    '• Kota Yogyakarta, Sleman, Bantul, Kulon Progo, Gunungkidul',
-                    style: TextStyle(fontSize: 11, color: AppColors.textMuted),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    '2. Provinsi Jawa Tengah',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textDark,
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    '• Surakarta (Solo), Semarang, Magelang, Klaten, dan sekitarnya',
-                    style: TextStyle(fontSize: 11, color: AppColors.textMuted),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.charcoal,
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Tutup'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ─── INFORMASI LEVEL & POIN KURATOR ───
-
-  void _showLevelInfoSheet() {
-    final p = _profile;
-    final currentLv = p?.curatorLevel ?? 1;
-    final currentTitle = p?.levelTitle ?? 'Pemula Rasa';
-    final currentPts = p?.points ?? 100;
-    final neededPts = p?.pointsToNextLevel ?? (300 - currentPts).clamp(0, 300);
-
-    final levels = [
-      {
-        'lv': 1,
-        'title': 'Pemula Rasa',
-        'range': '0 - 299 Poin Rasa',
-        'desc': 'Baru memulai petualangan kuliner di Jogja & Jateng.',
-      },
-      {
-        'lv': 2,
-        'title': 'Penjelajah Kuliner',
-        'range': '300 - 799 Poin Rasa',
-        'desc': 'Mulai rajin menjelajahi warung & kuliner legendaris.',
-      },
-      {
-        'lv': 3,
-        'title': 'Kurator Kuliner',
-        'range': '800 - 1499 Poin Rasa',
-        'desc': 'Rasa dan ulasan Anda menjadi rujukan sesama pencinta rasa.',
-      },
-      {
-        'lv': 4,
-        'title': 'Penjelajah Kuliner Sejati',
-        'range': '1500 - 2499 Poin Rasa',
-        'desc': 'Koleksi pengalaman rasa yang luas dan berwawasan tinggi.',
-      },
-      {
-        'lv': 5,
-        'title': 'Kurator Utama',
-        'range': '≥ 2500 Poin Rasa',
-        'desc': 'Gelar tertinggi kurator kuliner kehormatan FOODIE.',
-      },
-    ];
-
+  void _showUnifiedNotificationSettingsSheet() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        padding: const EdgeInsets.fromLTRB(20, 14, 20, 28),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: AppColors.line,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) {
+          final now = DateTime.now();
+          final pendingVisits = HiveService.instance
+              .getAllVisitReminders()
+              .where((r) {
+                final dt = DateTime.tryParse(r['scheduledAt']?.toString() ?? '');
+                return dt != null &&
+                    dt.isAfter(now) &&
+                    (r['isCompleted'] != true);
+              })
+              .length;
+          return Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
                     decoration: BoxDecoration(
-                      color: AppColors.orange.withValues(alpha: 0.12),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.stars_rounded,
-                      color: AppColors.orange,
-                      size: 24,
+                      color: AppColors.line,
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Tingkatan Kurator Kuliner',
-                          style: AppText.display(17),
-                        ),
-                        const Text(
-                          'Sistem reputasi dan akumulasi Poin Rasa kurator FOODIE',
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            color: AppColors.textMuted,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // Status Kartu Pengguna Saat Ini
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppColors.charcoal, Color(0xFF333333)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                const SizedBox(height: 16),
+                Row(
                   children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.orange.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.notifications_active_rounded,
+                        color: AppColors.orange,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Pengaturan Notifikasi',
+                            style: AppText.display(18),
                           ),
-                          decoration: BoxDecoration(
-                            color: AppColors.orange,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            'Level $currentLv',
-                            style: const TextStyle(
+                          const Text(
+                            'Atur pengingat makan & kunjungan restoran',
+                            style: TextStyle(
                               fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
+                              color: AppColors.textMuted,
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          currentTitle,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const Spacer(),
-                        Text(
-                          '$currentPts Poin Rasa',
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFFFFD54F),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: p?.levelProgress ?? 0.3,
-                        minHeight: 6,
-                        backgroundColor: Colors.white.withValues(alpha: 0.2),
-                        valueColor: const AlwaysStoppedAnimation<Color>(
-                          Color(0xFFFFD54F),
-                        ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      currentLv >= 5
-                          ? 'Selamat! Anda telah mencapai tingkatan kurator tertinggi.'
-                          : 'Butuh $neededPts Poin Rasa lagi untuk naik ke Level ${currentLv + 1} (${levels[currentLv]['title']}).',
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        color: Colors.white.withValues(alpha: 0.85),
-                      ),
+                    Switch(
+                      value: _notif,
+                      activeTrackColor: AppColors.orange,
+                      activeThumbColor: Colors.white,
+                      onChanged: (val) async {
+                        await _toggleNotif(val);
+                        setSheetState(() {});
+                        setState(() {});
+                      },
                     ),
                   ],
                 ),
-              ),
+                const SizedBox(height: 16),
+                const Divider(height: 1, color: AppColors.line),
+                const SizedBox(height: 12),
 
-              const SizedBox(height: 18),
-              const Text(
-                'Cara Mendapatkan Poin Rasa',
-                style: TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textDark,
-                ),
-              ),
-              const SizedBox(height: 8),
-              _buildPointActionTile(
-                icon: Icons.rate_review_rounded,
-                color: AppColors.orange,
-                title: 'Tulis Ulasan & Rating',
-                reward: '+20 Poin Rasa',
-                desc: 'Bagikan ulasan jujur kuliner yang Anda nikmati.',
-              ),
-              const SizedBox(height: 6),
-              _buildPointActionTile(
-                icon: Icons.sports_esports_rounded,
-                color: const Color(0xFF6C5CE7),
-                title: 'Mainkan Mini-Game',
-                reward: 's/d +350 Poin Rasa',
-                desc: 'Selesaikan tebak rasa Kulinerdle dan Kasus Detektif.',
-              ),
-
-              const SizedBox(height: 18),
-              const Text(
-                'Daftar Tingkatan Level',
-                style: TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textDark,
-                ),
-              ),
-              const SizedBox(height: 8),
-              ...levels.map((item) {
-                final lvNum = item['lv'] as int;
-                final isCurrent = lvNum == currentLv;
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 6),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isCurrent
-                        ? AppColors.orange.withValues(alpha: 0.08)
-                        : AppColors.surfaceSubtle,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isCurrent
-                          ? AppColors.orange
-                          : AppColors.line.withValues(alpha: 0.5),
-                      width: isCurrent ? 1.5 : 1,
+                // Pilihan 1: Pengingat Makan Harian
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: AppColors.cream,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.restaurant_rounded,
+                      color: AppColors.charcoal,
+                      size: 20,
                     ),
                   ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 28,
-                        height: 28,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: isCurrent
-                              ? AppColors.orange
-                              : AppColors.charcoal.withValues(alpha: 0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Text(
-                          '$lvNum',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: isCurrent
-                                ? Colors.white
-                                : AppColors.charcoal,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Text(
-                                  item['title'] as String,
-                                  style: TextStyle(
-                                    fontSize: 12.5,
-                                    fontWeight: isCurrent
-                                        ? FontWeight.w800
-                                        : FontWeight.w600,
-                                    color: isCurrent
-                                        ? AppColors.orange
-                                        : AppColors.textDark,
-                                  ),
-                                ),
-                                if (isCurrent) ...[
-                                  const SizedBox(width: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 6,
-                                      vertical: 1.5,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.orange,
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: const Text(
-                                      'Level Anda',
-                                      style: TextStyle(
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.w700,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              item['desc'] as String,
-                              style: const TextStyle(
-                                fontSize: 10.5,
-                                color: AppColors.textMuted,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Text(
-                        item['range'] as String,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.charcoal,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }),
-
-              const SizedBox(height: 18),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.orange,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  icon: const Icon(Icons.shopping_bag_rounded, size: 18),
-                  label: const Text(
-                    'Tukar Poin Rasa di Toko Border Hadiah',
+                  title: const Text(
+                    'Pengingat Jadwal Makan',
                     style: TextStyle(
                       fontSize: 13.5,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  onPressed: () {
+                  subtitle: Text(
+                    _mealIsSet
+                        ? '$_mealLabel pukul ${_mealHour.toString().padLeft(2, '0')}:${_mealMinute.toString().padLeft(2, '0')} WIB'
+                        : 'Belum diatur (ketuk untuk tentukan jam)',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                  trailing: const Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppColors.slateBlue,
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _showMealReminderPicker();
+                  },
+                ),
+                const SizedBox(height: 6),
+
+                // Pilihan 2: Pengingat Kunjungan Restoran
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: AppColors.cream,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.pin_drop_rounded,
+                      color: AppColors.orange,
+                      size: 20,
+                    ),
+                  ),
+                  title: const Text(
+                    'Pengingat Kunjungan Restoran',
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  subtitle: Text(
+                    pendingVisits > 0
+                        ? '$pendingVisits jadwal kunjungan aktif'
+                        : 'Jadwalkan tanggal & jam kunjungan kuliner',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                  trailing: const Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppColors.slateBlue,
+                  ),
+                  onTap: () {
                     Navigator.pop(ctx);
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => const RewardsShopPage(),
+                        builder: (_) => const NotificationsPage(),
                       ),
                     );
                   },
                 ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+                const SizedBox(height: 14),
 
-  Widget _buildPointActionTile({
-    required IconData icon,
-    required Color color,
-    required String title,
-    required String reward,
-    required String desc,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceSubtle,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.line.withValues(alpha: 0.5)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, size: 18, color: color),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textDark,
-                  ),
-                ),
-                const SizedBox(height: 1),
-                Text(
-                  desc,
-                  style: const TextStyle(
-                    fontSize: 10.5,
-                    color: AppColors.textMuted,
+                // Tombol Uji Notifikasi Langsung (Praktikum Demo)
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.charcoal,
+                      side: const BorderSide(
+                        color: AppColors.charcoal,
+                        width: 1.2,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    icon: const Icon(Icons.send_rounded, size: 16),
+                    label: const Text(
+                      'Uji Notifikasi Sekarang (Instant Test)',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    onPressed: () async {
+                      await NotificationService.instance
+                          .showInstantNotification(
+                            id: 999,
+                            title: 'FOODIE: Waktunya Makan!',
+                            body:
+                                'Pengingat kuliner FOODIE berhasil terhubung dengan notifikasi lokal sistem.',
+                            force: true,
+                          );
+                      if (ctx.mounted) {
+                        ScaffoldMessenger.of(ctx).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Notifikasi uji berhasil dikirim ke sistem HP!',
+                            ),
+                            backgroundColor: AppColors.greenDark,
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
+                    },
                   ),
                 ),
               ],
             ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _showGeminiPersonaAnalysisSheet() {
+    if (_aiProfile == null || !_aiProfile!.isCompleted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Lengkapi profil kuliner terlebih dahulu untuk dianalisis oleh Gemini AI!',
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(8),
+          backgroundColor: AppColors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      Navigator.of(context)
+          .push(MaterialPageRoute(builder: (_) => const AiProfilePage()))
+          .then((_) => _loadAiProfile());
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => FutureBuilder<String>(
+        future: GeminiChatService.instance.generatePersonaAnalysis(_aiProfile!),
+        builder: (ctx, snapshot) {
+          final isLoading = snapshot.connectionState == ConnectionState.waiting;
+          final analysis =
+              snapshot.data ??
+              'Menganalisis persona dengan model Google Gemini 1.5 Flash...';
+
+          return Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
-            child: Text(
-              reward,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                color: color,
-              ),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.line,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.orange.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.auto_awesome_rounded,
+                        color: AppColors.orange,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Analisis Persona Gemini AI',
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.charcoal,
+                            ),
+                          ),
+                          Text(
+                            'Ditenagai Google Gemini 1.5 Flash LLM',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppColors.slateBlue,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.cream,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.line),
+                  ),
+                  child: isLoading
+                      ? const Row(
+                          children: [
+                            SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.orange,
+                              ),
+                            ),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Menghubungi Google Gemini 1.5 Flash...',
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  color: AppColors.textDark,
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      : Text(
+                          analysis,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            height: 1.5,
+                            color: AppColors.charcoal,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.charcoal,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      Navigator.of(context)
+                          .push(
+                            MaterialPageRoute(
+                              builder: (_) => const AiProfilePage(),
+                            ),
+                          )
+                          .then((_) => _loadAiProfile());
+                    },
+                    child: const Text(
+                      'Edit Preferensi & Persona',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -1683,32 +1555,13 @@ class _ProfileTabState extends State<ProfileTab>
                     _statsRow(),
                     const SizedBox(height: 18),
 
-                    // ── Arena Gamifikasi & Rewards ──
-                    _sectionLabel('ARENA GAMIFIKASI & REWARDS'),
-                    const SizedBox(height: 8),
-                    _gamificationBentoGrid(),
-                    const SizedBox(height: 20),
-
                     // ── Jejak Kuliner ──
                     _sectionLabel('JEJAK KULINER KURATOR'),
                     const SizedBox(height: 8),
                     _historySection(),
                     const SizedBox(height: 20),
-                    const SizedBox(height: 16),
-                    _sectionLabel('UTILITAS WISATAWAN'),
-                    const SizedBox(height: 8),
-                    _group([
-                      _tile(
-                        Icons.currency_exchange,
-                        'Konverter Kurs & Zona Waktu',
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const ConverterPage(),
-                          ),
-                        ),
-                      ),
-                    ]),
-                    const SizedBox(height: 16),
+
+                    // ── Preferensi Sistem ──
                     _sectionLabel('PREFERENSI SISTEM'),
                     const SizedBox(height: 8),
                     _group([
@@ -1718,32 +1571,22 @@ class _ProfileTabState extends State<ProfileTab>
                         _biometric,
                         _toggleBiometric,
                       ),
-                      _switchTile(
-                        Icons.notifications_rounded,
-                        'Notifikasi',
-                        _notif,
-                        _toggleNotif,
-                      ),
                       _tile(
-                        _notif ? Icons.alarm_rounded : Icons.alarm_off_rounded,
-                        'Jadwal Pengingat Makan',
+                        _notif
+                            ? Icons.notifications_active_rounded
+                            : Icons.notifications_off_rounded,
+                        'Pengaturan Notifikasi',
                         trailing: _notif
                             ? (_mealIsSet
-                                  ? '${_mealHour.toString().padLeft(2, '0')}:${_mealMinute.toString().padLeft(2, '0')} WIB'
-                                  : 'Belum Diatur >')
-                            : 'Notifikasi Nonaktif',
-                        onTap: _showMealReminderPicker,
-                      ),
-                      _tile(
-                        Icons.map_rounded,
-                        'Cakupan Wilayah',
-                        trailing: 'DIY & Jateng',
-                        onTap: _showCoverageDialog,
+                                ? '${_mealHour.toString().padLeft(2, '0')}:${_mealMinute.toString().padLeft(2, '0')} WIB'
+                                : 'Aktif')
+                            : 'Nonaktif',
+                        onTap: _showUnifiedNotificationSettingsSheet,
                       ),
                       _tile(
                         Icons.rate_review_rounded,
                         'Saran & Kesan',
-                        trailing: 'Mata Kuliah',
+                        trailing: 'Praktikum Mobile',
                         onTap: () => Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => const SaranKesanPage(),
@@ -2585,6 +2428,49 @@ class _ProfileTabState extends State<ProfileTab>
                 ),
               ],
             ),
+            const SizedBox(height: 12),
+            InkWell(
+              onTap: _showGeminiPersonaAnalysisSheet,
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.2),
+                  ),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.auto_awesome_rounded,
+                      color: AppColors.saffron,
+                      size: 15,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      'Konsultasi Persona Gemini AI 1.5 Flash',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                    SizedBox(width: 4),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      color: Colors.white70,
+                      size: 16,
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -2701,97 +2587,35 @@ class _ProfileTabState extends State<ProfileTab>
                   ),
                 ],
                 const SizedBox(height: 6),
-                GestureDetector(
-                  onTap: _showLevelInfoSheet,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.25),
-                        width: 0.8,
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.verified_user_rounded,
+                        size: 12,
+                        color: AppColors.saffron,
                       ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.stars_rounded,
-                          size: 13,
-                          color: Color(0xFFFFD54F),
+                      SizedBox(width: 4),
+                      Text(
+                        'Kurator Kuliner',
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
                         ),
-                        const SizedBox(width: 4),
-                        Text(
-                          _profile != null
-                              ? 'Level ${_profile!.curatorLevel}: ${_profile!.levelTitle}'
-                              : 'Kurator Yogyakarta',
-                          style: const TextStyle(
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Icon(
-                          Icons.info_outline_rounded,
-                          size: 11,
-                          color: Colors.white.withValues(alpha: 0.85),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-                if (_profile != null) ...[
-                  const SizedBox(height: 8),
-                  GestureDetector(
-                    onTap: _showLevelInfoSheet,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Text(
-                              '${_profile!.points} Poin Rasa',
-                              style: const TextStyle(
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFFFFE082),
-                              ),
-                            ),
-                            const Spacer(),
-                            Text(
-                              _profile!.curatorLevel >= 5
-                                  ? 'Level Maksimal'
-                                  : 'Target Lv ${_profile!.curatorLevel + 1}: ${_profile!.nextLevelPoints} Poin Rasa',
-                              style: TextStyle(
-                                fontSize: 9.5,
-                                color: Colors.white.withValues(alpha: 0.8),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 3),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: LinearProgressIndicator(
-                            value: _profile!.levelProgress,
-                            minHeight: 4,
-                            backgroundColor: Colors.white.withValues(
-                              alpha: 0.2,
-                            ),
-                            valueColor: const AlwaysStoppedAnimation<Color>(
-                              Color(0xFFFFD54F),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
               ],
             ),
           ),
@@ -2833,226 +2657,25 @@ class _ProfileTabState extends State<ProfileTab>
     final revCount = _myReviews.isNotEmpty
         ? _myReviews.length
         : (_stats['reviews'] ?? 0);
-    final pts = _profile?.points ?? 100;
 
     return Row(
       children: [
         _stat(
           '$favCount',
-          'Favorit',
+          'Favorit Tersimpan',
           icon: Icons.favorite_rounded,
           onTap: () {
             _histTab.animateTo(0);
           },
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 12),
         _stat(
           '$revCount',
-          'Ulasan',
+          'Ulasan Saya',
           icon: Icons.rate_review_rounded,
           onTap: () {
             _histTab.animateTo(1);
           },
-        ),
-        const SizedBox(width: 10),
-        _stat(
-          '$pts',
-          'Poin Rasa',
-          icon: Icons.stars_rounded,
-          isPoints: true,
-          onTap: _showLevelInfoSheet,
-        ),
-      ],
-    );
-  }
-
-  Widget _gamificationBentoGrid() {
-    final pts = _profile?.points ?? 100;
-    return Row(
-      children: [
-        // Bento Card 1: Mini Games Kuliner
-        Expanded(
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () async {
-                await Navigator.of(context)
-                    .push(MaterialPageRoute(builder: (_) => const GamePage()));
-                _load();
-                _loadHistory();
-              },
-              borderRadius: BorderRadius.circular(18),
-              child: Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(
-                    color: AppColors.orange.withValues(alpha: 0.16),
-                  ),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x06000000),
-                      blurRadius: 10,
-                      offset: Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppColors.orange.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Icons.sports_esports_rounded,
-                            size: 20,
-                            color: AppColors.orange,
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 7,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.orange.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Text(
-                            '3 Game',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.orange,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Mini Games',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textDark,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    const Text(
-                      'Main & raih Poin Rasa',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textMuted,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        // Bento Card 2: Toko Border & Rewards
-        Expanded(
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () async {
-                await Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const RewardsShopPage()),
-                );
-                _load();
-                _loadHistory();
-              },
-              borderRadius: BorderRadius.circular(18),
-              child: Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(
-                    color: AppColors.greenDark.withValues(alpha: 0.16),
-                  ),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x06000000),
-                      blurRadius: 10,
-                      offset: Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppColors.greenDark.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Icons.storefront_rounded,
-                            size: 20,
-                            color: AppColors.greenDark,
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 7,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.greenDark.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            '$pts Poin Rasa',
-                            style: const TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.greenDark,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Toko Rewards',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textDark,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    const Text(
-                      'Tukar border avatar',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textMuted,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
         ),
       ],
     );

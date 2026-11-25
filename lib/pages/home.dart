@@ -7,15 +7,14 @@ import '../props/app_colors.dart';
 import '../services/dish_image_service.dart';
 import '../services/supabase_service.dart';
 import '../widgets/common_widgets.dart';
-import '../widgets/decide.dart';
-import 'ai_tab.dart';
 import 'detail_page.dart';
 import 'explore_tab.dart';
+import 'favorites_page.dart';
 import 'home_tab.dart';
 import 'profile_tab.dart';
 
-/// Kerangka aplikasi setelah login: 5 tab + bottom navigation.
-/// Tab: Home, Explore, Decide, AI, Profile.
+/// Kerangka aplikasi utama setelah login: 4 tab bottom navigation.
+/// Tab: 1. Home, 2. Explore, 3. Favorit, 4. Profil.
 class HomePage extends StatefulWidget {
   final String name;
   final bool fromRegister;
@@ -34,7 +33,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _index = 0;
-  String? _exploreCategory; // kategori yang di-filter dari home
+  String? _exploreCategory; // kategori yang di-filter dari home/explore
   double? _userLat;
   double? _userLng;
   Profile? _profile;
@@ -45,9 +44,8 @@ class _HomePageState extends State<HomePage> {
   static const _items = [
     _NavItem(Icons.home_rounded, Icons.home_rounded, 'Home'),
     _NavItem(Icons.explore_rounded, Icons.explore_rounded, 'Explore'),
-    _NavItem(Icons.casino_rounded, Icons.casino_rounded, 'Decide'),
-    _NavItem(Icons.auto_awesome_rounded, Icons.auto_awesome_rounded, 'AI'),
-    _NavItem(Icons.person_rounded, Icons.person_rounded, 'Profile'),
+    _NavItem(Icons.favorite_rounded, Icons.favorite_rounded, 'Favorit'),
+    _NavItem(Icons.person_rounded, Icons.person_rounded, 'Profil'),
   ];
 
   @override
@@ -85,11 +83,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _select(int i) {
-    if (i == 2) {
-      // "Decide" langsung membuka Shake to Decide.
-      showDecideSheet(context);
-      return;
-    }
     setState(() => _index = i);
     if (i == 0) {
       _loadProfile();
@@ -137,8 +130,7 @@ class _HomePageState extends State<HomePage> {
               userLng: _userLng,
               onBackToHome: () => _select(0),
             ),
-            const SizedBox.shrink(), // slot "Decide" (dibuka sebagai sheet)
-            const AiTab(),
+            const FavoritesPage(isTab: true),
             ProfileTab(
               name: _currentName,
               fromRegister: widget.fromRegister,
@@ -153,22 +145,22 @@ class _HomePageState extends State<HomePage> {
                 final clean = (url != null && url.trim().isNotEmpty)
                     ? url.trim()
                     : null;
-                setState(() {
-                  _customAvatarUrl = clean;
-                  _profile = _profile?.copyWith(avatarUrl: clean);
-                });
-              },
-            ),
-          ],
-        ),
-        bottomNavigationBar: _BottomNav(
-          index: _index,
-          items: _items,
-          avatarUrl: _customAvatarUrl ?? _profile?.avatarUrl,
-          onSelect: _select,
-        ),
+              setState(() {
+                _customAvatarUrl = clean;
+                _profile = _profile?.copyWith(avatarUrl: clean);
+              });
+            },
+          ),
+        ],
       ),
-    );
+      bottomNavigationBar: _BottomNav(
+        index: _index,
+        items: _items,
+        avatarUrl: _customAvatarUrl ?? _profile?.avatarUrl,
+        onSelect: _select,
+      ),
+    ),
+  );
   }
 }
 
@@ -207,7 +199,7 @@ class _BottomNav extends StatelessWidget {
             children: List.generate(items.length, (i) {
               final item = items[i];
               final active = i == index;
-              final isProfile = item.label == 'Profile';
+              final isProfile = item.label == 'Profil';
               final hasAvatar =
                   isProfile &&
                   avatarUrl != null &&

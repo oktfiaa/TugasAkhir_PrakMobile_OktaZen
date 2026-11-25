@@ -88,6 +88,69 @@ class GeminiChatService {
     _conversationHistory.clear();
   }
 
+  /// Menghasilkan analisis persona kuliner personal menggunakan Google Gemini 1.5 Flash
+  Future<String> generatePersonaAnalysis(UserAiProfile profile) async {
+    await init();
+    if (!hasKey) {
+      final tastes = profile.favoriteTastes.isNotEmpty
+          ? profile.favoriteTastes.join(', ')
+          : 'aneka rasa';
+      return 'Persona Kuliner: Penikmat kuliner $tastes dengan budget ${profile.mealBudget ?? 'fleksibel'}. AI Gemini siap merekomendasikan kuliner terfavorit di Jogja!';
+    }
+    try {
+      final prompt = '''
+Berdasarkan profil kuliner pengguna:
+- Pekerjaan: ${profile.occupation ?? 'Umum'}
+- Tempat tinggal: ${profile.housingType ?? 'Rumah'} (${profile.address ?? 'Yogyakarta'})
+- Selera favorit: ${profile.favoriteTastes.join(', ')}
+- Budget makan: ${profile.mealBudget ?? 'Menengah'}
+- Suasana favorit: ${profile.preferredVibe ?? 'Santai'}
+- Preferensi: ${profile.dietaryPreference ?? 'Semua Makanan'}
+
+Berikan 1 paragraf singkat (maksimal 3 kalimat) dalam bahasa Indonesia yang ramah tentang persona kuliner mereka dan 1 rekomendasi gaya kulineran yang pas di Yogyakarta.
+''';
+
+      final url = Uri.parse(
+        'https://generativelanguage.googleapis.com/v1beta/models/$_kDefaultModel:generateContent?key=${apiKey!.trim()}',
+      );
+
+      final response = await http
+          .post(
+            url,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'contents': [
+                {
+                  'parts': [
+                    {'text': prompt}
+                  ]
+                }
+              ],
+              'generationConfig': {
+                'temperature': 0.7,
+                'maxOutputTokens': 200,
+              },
+            }),
+          )
+          .timeout(const Duration(seconds: 12));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final candidates = data['candidates'] as List?;
+        if (candidates != null && candidates.isNotEmpty) {
+          final content = candidates[0]['content'] as Map<String, dynamic>?;
+          final parts = content?['parts'] as List?;
+          if (parts != null && parts.isNotEmpty) {
+            return (parts[0]['text'] as String).trim();
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Gemini persona analysis failed: $e');
+    }
+    return 'Persona Kuliner: Penikmat selera ${profile.favoriteTastes.join(', ')} dengan gaya ${profile.preferredVibe ?? 'santai'}.';
+  }
+
   /// Menguji koneksi ke Google Gemini API dengan kunci yang diberikan
   Future<bool> testConnection([String? keyToTest]) async {
     final key = keyToTest ?? apiKey;
