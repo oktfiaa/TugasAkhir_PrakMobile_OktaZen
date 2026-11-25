@@ -1146,235 +1146,179 @@ class _PlaceCard extends StatelessWidget {
         ? r.priceRange
         : 'Mulai ${formatRp(r.priceMin)}';
 
+    String distLabel = '15-25 mnt';
+    if (distanceM != null) {
+      distLabel = distanceM! >= 1000
+          ? '${(distanceM! / 1000).toStringAsFixed(1)} km'
+          : '${distanceM!.round()} m';
+    }
+
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onDetail,
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.greenDark.withValues(alpha: 0.08),
-              blurRadius: 14,
-              offset: const Offset(0, 5),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(22),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-          ],
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _image(),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(22),
+              child: SizedBox(
+                height: 175,
+                width: double.infinity,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    RestaurantImage(
+                      imageUrl: r.imageUrl,
+                      category: r.category,
+                      dishType: r.dishType,
+                    ),
+                    // Badge waktu / jarak di kiri atas (desain pill semi-transparan)
+                    Positioned(
+                      top: 10,
+                      left: 10,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4.5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.38),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
+                            const Icon(
+                              Icons.access_time_rounded,
+                              size: 13,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(width: 4),
                             Text(
-                              _formatCategoryLabel(r.category).toUpperCase(),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                              distLabel,
                               style: const TextStyle(
-                                fontSize: 9.5,
-                                letterSpacing: 0.6,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.textMuted,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
                               ),
                             ),
-                            const SizedBox(height: 3),
-                            Text(r.name, style: AppText.display(16)),
                           ],
                         ),
                       ),
-                      ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 5,
-                          ),
+                    ),
+                    // Tombol favorit di kanan atas
+                    Positioned(
+                      top: 10,
+                      right: 10,
+                      child: GestureDetector(
+                        onTap: onFavorite,
+                        child: Container(
+                          width: 34,
+                          height: 34,
                           decoration: BoxDecoration(
-                            color: AppColors.tint(AppColors.yellow, 0.5),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.star_rounded,
-                                size: 15,
-                                color: AppColors.orange,
-                              ),
-                              const SizedBox(width: 3),
-                              Text(
-                                rating.toStringAsFixed(1),
-                                style: const TextStyle(
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.greenDark,
-                                ),
+                            color: Colors.white.withValues(alpha: 0.9),
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.1),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
                               ),
                             ],
                           ),
-                        ),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.payments_rounded,
-                        size: 16,
-                        color: AppColors.greenDark,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        price,
-                        style: const TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.greenDark,
+                          child: Icon(
+                            favorite
+                                ? Icons.favorite_rounded
+                                : Icons.favorite_border_rounded,
+                            size: 19,
+                            color: favorite
+                                ? AppColors.red
+                                : AppColors.charcoal,
+                          ),
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Container(
+                    ),
+                    // Badge rating di kanan bawah (pill kuning dengan bintang hitam)
+                    Positioned(
+                      bottom: 10,
+                      right: 10,
+                      child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 9,
-                          vertical: 4,
+                          vertical: 4.5,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.tint(AppColors.yellow, 0.4),
-                          borderRadius: BorderRadius.circular(8),
+                          color: AppColors.yellow,
+                          borderRadius: BorderRadius.circular(20),
                         ),
-                        child: Text(
-                          _formatCategoryLabel(r.category),
-                          style: const TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.greenDark,
-                          ),
-                        ),
-                      ),
-                      if (distanceM != null) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.tint(AppColors.orange, 0.15),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.near_me_rounded,
-                                size: 11,
-                                color: AppColors.orange,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.star_rounded,
+                              size: 15,
+                              color: AppColors.charcoal,
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              rating.toStringAsFixed(1),
+                              style: const TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.charcoal,
                               ),
-                              const SizedBox(width: 3),
-                              Text(
-                                distanceM! >= 1000
-                                    ? '${(distanceM! / 1000).toStringAsFixed(1)} km'
-                                    : '${distanceM!.round()} m',
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.orange,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                      const Spacer(),
-                      const Text(
-                        'Detail',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.greenDark,
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 2),
-                      const Icon(
-                        Icons.arrow_forward,
-                        size: 14,
-                        color: AppColors.greenDark,
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _image() {
-    return SizedBox(
-      height: 150,
-      width: double.infinity,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          RestaurantImage(
-            imageUrl: r.imageUrl,
-            category: r.category,
-            dishType: r.dishType,
-          ),
-          const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.center,
-                end: Alignment.bottomCenter,
-                colors: [Colors.transparent, Color(0x99000000)],
-              ),
-            ),
-          ),
-          Positioned(
-            top: 8,
-            right: 8,
-            child: GestureDetector(
-              onTap: onFavorite,
-              child: Container(
-                width: 32,
-                height: 32,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  favorite ? Icons.favorite : Icons.favorite_border,
-                  size: 18,
-                  color: favorite ? AppColors.red : AppColors.greenDark,
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
-          Positioned(
-            left: 10,
-            right: 10,
-            bottom: 8,
-            child: Row(
+          const SizedBox(height: 8),
+          Text(
+            r.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: AppColors.charcoal,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            '${_formatCategoryLabel(r.category)} • $price',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textMuted,
+            ),
+          ),
+          if (r.address.isNotEmpty) ...[
+            const SizedBox(height: 3),
+            Row(
               children: [
-                const Icon(Icons.place, size: 12, color: Colors.white),
+                const Icon(
+                  Icons.place_rounded,
+                  size: 12,
+                  color: AppColors.textMuted,
+                ),
                 const SizedBox(width: 3),
                 Expanded(
                   child: Text(
@@ -1382,15 +1326,14 @@ class _PlaceCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                      fontSize: 11,
+                      color: AppColors.textMuted,
                     ),
                   ),
                 ),
               ],
             ),
-          ),
+          ],
         ],
       ),
     );

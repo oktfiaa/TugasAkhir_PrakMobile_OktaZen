@@ -46,11 +46,63 @@ class HomeTab extends StatefulWidget {
   State<HomeTab> createState() => _HomeTabState();
 }
 
+class _CategoryItem {
+  final String id;
+  final String label;
+  final IconData icon;
+
+  const _CategoryItem({
+    required this.id,
+    required this.label,
+    required this.icon,
+  });
+}
+
 class _HomeTabState extends State<HomeTab> {
   final _svc = SupabaseService.instance;
   final _pageCtrl = PageController(viewportFraction: 0.9);
   final _aiPageCtrl = PageController(viewportFraction: 0.88);
 
+  static const List<_CategoryItem> _categoryItems = [
+    _CategoryItem(
+      id: 'all',
+      label: 'Popular',
+      icon: Icons.local_fire_department_rounded,
+    ),
+    _CategoryItem(
+      id: 'Fast Food',
+      label: 'Western',
+      icon: Icons.local_pizza_rounded,
+    ),
+    _CategoryItem(
+      id: 'Cafe',
+      label: 'Drinks',
+      icon: Icons.local_cafe_rounded,
+    ),
+    _CategoryItem(
+      id: 'Warung Tradisional',
+      label: 'Local',
+      icon: Icons.whatshot_rounded,
+    ),
+    _CategoryItem(
+      id: 'Food Court',
+      label: 'Dessert',
+      icon: Icons.icecream_rounded,
+    ),
+    _CategoryItem(
+      id: 'Restoran',
+      label: 'Resto',
+      icon: Icons.restaurant_rounded,
+    ),
+    _CategoryItem(
+      id: 'Angkringan',
+      label: 'Angkringan',
+      icon: Icons.storefront_rounded,
+    ),
+  ];
+
+  String _selectedCategoryId = 'all';
+  List<Restaurant> _allRestaurants = [];
   Profile? _profile;
   List<Restaurant> _picks = []; // Rekomendasi terdekat (LBS)
   List<AiRecommendationResult> _aiPicks = []; // Rekomendasi personal AI
@@ -192,7 +244,8 @@ class _HomeTabState extends State<HomeTab> {
       if (!mounted) return;
       setState(() {
         _profile = results[0] as Profile?;
-        _picks = restos.take(5).toList();
+        _allRestaurants = List<Restaurant>.of(rawRestos);
+        _picks = restos;
         _aiProfile = aiProf;
         _aiPicks = aiResults.take(6).toList();
         _loading = false;
@@ -202,6 +255,42 @@ class _HomeTabState extends State<HomeTab> {
     } finally {
       if (mounted) _isLoadingData = false;
     }
+  }
+
+  List<Restaurant> get _filteredPicks {
+    if (_selectedCategoryId == 'all') {
+      return _picks.take(10).toList();
+    }
+    final filtered = _allRestaurants.where((r) {
+      final cat = r.category.toLowerCase();
+      if (_selectedCategoryId == 'Fast Food') {
+        return cat.contains('fast food') ||
+            (r.dishType?.contains('burger') ?? false) ||
+            (r.dishType?.contains('pizza') ?? false) ||
+            (r.dishType?.contains('steak') ?? false);
+      }
+      if (_selectedCategoryId == 'Cafe') {
+        return cat.contains('cafe') ||
+            (r.dishType?.contains('kopi') ?? false) ||
+            (r.dishType?.contains('minuman') ?? false);
+      }
+      if (_selectedCategoryId == 'Warung Tradisional') {
+        return cat.contains('warung') ||
+            cat.contains('tradisional') ||
+            (r.dishType?.contains('jawa') ?? false) ||
+            (r.dishType?.contains('padang') ?? false) ||
+            (r.dishType?.contains('soto') ?? false) ||
+            (r.dishType?.contains('bakso') ?? false);
+      }
+      if (_selectedCategoryId == 'Food Court') {
+        return cat.contains('food court') ||
+            (r.dishType?.contains('kue') ?? false) ||
+            (r.dishType?.contains('bakpia') ?? false);
+      }
+      return cat.contains(_selectedCategoryId.toLowerCase());
+    }).toList();
+
+    return filtered.isNotEmpty ? filtered.take(10).toList() : _picks.take(10).toList();
   }
 
   void _open(Restaurant r) {
@@ -234,34 +323,24 @@ class _HomeTabState extends State<HomeTab> {
             await _load();
           },
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 14, 20, 28),
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 32),
             children: [
               _header(first),
               const SizedBox(height: 18),
-              // ── GPS / Lokasi Widget (Modul VI LBS) ──
-              _gpsWidget(),
+              _categoryRow(),
+              const SizedBox(height: 18),
+              _bannerCard(),
               const SizedBox(height: 22),
-              // ── Rekomendasi Cerdas AI (Modul V API) ──
-              _aiRecommendationSection(),
-              const SizedBox(height: 24),
               Row(
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Terdekat dari Lokasimu',
-                          style: AppText.display(20),
-                        ),
-                        Text(
-                          'Kuliner paling dekat dengan kamu saat ini',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: AppColors.textMuted,
-                          ),
-                        ),
-                      ],
+                  const Expanded(
+                    child: Text(
+                      'Popular Recipes',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.charcoal,
+                      ),
                     ),
                   ),
                   GestureDetector(
@@ -271,14 +350,17 @@ class _HomeTabState extends State<HomeTab> {
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w800,
-                        color: AppColors.red,
+                        color: AppColors.orange,
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              _nearbyCarousel(),
+              const SizedBox(height: 14),
+              _popularRecipesGrid(),
+              const SizedBox(height: 26),
+              // ── GPS / Lokasi Widget (Modul VI LBS) ──
+              _gpsWidget(),
             ],
           ),
         ),
@@ -286,76 +368,347 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
-  // ---------- Header ----------
+  // ---------- Header (Foto Profil + Teks Awal + Lonceng) ----------
   Widget _header(String first) {
+    final avatarUrl = _profile?.avatarUrl;
+
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
+        // Foto profil pengguna
+        Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.08),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.all(2),
+          child: ClipOval(
+            child: (avatarUrl != null && avatarUrl.isNotEmpty)
+                ? Image.network(
+                    avatarUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => const Icon(
+                      Icons.person_rounded,
+                      color: AppColors.charcoal,
+                      size: 26,
+                    ),
+                  )
+                : const Icon(
+                    Icons.person_rounded,
+                    color: AppColors.charcoal,
+                    size: 26,
+                  ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        // Teks header seperti awal tadi
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 6),
-              Text('Sugeng Rawuh, $first', style: AppText.display(26)),
-              const SizedBox(height: 4),
+              Text(
+                'Sugeng Rawuh, $first',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppText.display(22),
+              ),
+              const SizedBox(height: 2),
+              const Text(
+                'Mau makan enak apa hari ini?',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textMuted,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ],
           ),
         ),
         const SizedBox(width: 10),
-        Column(
-          children: [
-            ValueListenableBuilder(
-              valueListenable: HiveService.instance.settingsListenable,
-              builder: (_, _, _) {
-                final bool hasBadge =
-                    HiveService.instance.getActiveRemindersCount() > 0;
-                return GestureDetector(
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const NotificationsPage(),
+        // Lonceng notifikasi
+        ValueListenableBuilder(
+          valueListenable: HiveService.instance.settingsListenable,
+          builder: (_, _, _) {
+            final bool hasBadge =
+                HiveService.instance.getActiveRemindersCount() > 0;
+            return GestureDetector(
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const NotificationsPage(),
+                ),
+              ),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.notifications_rounded,
+                      size: 22,
+                      color: AppColors.charcoal,
                     ),
                   ),
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Container(
-                        width: 46,
-                        height: 46,
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
+                  if (hasBadge)
+                    Positioned(
+                      top: 2,
+                      right: 2,
+                      child: Container(
+                        width: 11,
+                        height: 11,
+                        decoration: BoxDecoration(
+                          color: AppColors.orange,
                           shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.notifications_rounded,
-                          size: 22,
-                          color: AppColors.charcoal,
-                        ),
-                      ),
-                      if (hasBadge)
-                        Positioned(
-                          top: 2,
-                          right: 2,
-                          child: Container(
-                            width: 11,
-                            height: 11,
-                            decoration: BoxDecoration(
-                              color: AppColors.orange,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white,
-                                width: 1.5,
-                              ),
-                            ),
+                          border: Border.all(
+                            color: Colors.white,
+                            width: 1.5,
                           ),
                         ),
-                    ],
-                  ),
-                );
-              },
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  // ---------- Kotak Banner (Warna Seperti Navbar) ----------
+  Widget _bannerCard() {
+    return GestureDetector(
+      onTap: () => widget.onSeeAll?.call(),
+      child: Container(
+        height: 148,
+        decoration: BoxDecoration(
+          color: AppColors.greenDark, // Warna sama persis seperti navbar
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.greenDark.withValues(alpha: 0.25),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
-      ],
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          children: [
+            // Konten teks di sebelah kiri
+            Positioned(
+              left: 20,
+              top: 18,
+              bottom: 18,
+              right: 140,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.yellow.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          'PENAWARAN SPESIAL',
+                          style: TextStyle(
+                            fontSize: 9.5,
+                            letterSpacing: 0.6,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.yellow,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Diskon s/d 30%',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          height: 1.15,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        'Nikmati kuliner favorit pilihanmu',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.white.withValues(alpha: 0.8),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 6.5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.orange,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.orange.withValues(alpha: 0.35),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Text(
+                      'Lihat Promo →',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Ilustrasi / gambar kuliner di sebelah kanan dengan fade transparan
+            Positioned(
+              right: -10,
+              top: -10,
+              bottom: -10,
+              width: 155,
+              child: ShaderMask(
+                shaderCallback: (rect) {
+                  return const LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [Colors.transparent, Colors.black],
+                    stops: [0.0, 0.3],
+                  ).createShader(rect);
+                },
+                blendMode: BlendMode.dstIn,
+                child: Image.network(
+                  'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=600&q=80',
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => Center(
+                    child: Icon(
+                      Icons.restaurant_rounded,
+                      size: 64,
+                      color: Colors.white.withValues(alpha: 0.2),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  //               child: Image.network(
+  //                 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=600&q=80',
+  //                 fit: BoxFit.cover,
+  //                 errorBuilder: (_, _, _) => Center(
+  //                   child: Icon(
+  //                     Icons.restaurant_rounded,
+  //                     size: 64,
+  //                     color: Colors.white.withValues(alpha: 0.2),
+  //                   ),
+  //                 ),
+  //               ),
+  //             ),
+  //           ),
+  //         ],
+  //       ),
+  //     ),
+  //   );
+  // }
+
+  // ---------- Category Icons Row (100% Persis Gambar) ----------
+  Widget _categoryRow() {
+    return SizedBox(
+      height: 94,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        itemCount: _categoryItems.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 16),
+        itemBuilder: (context, index) {
+          final item = _categoryItems[index];
+          final isSelected = item.id == _selectedCategoryId;
+
+          return GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedCategoryId = item.id;
+              });
+            },
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 58,
+                  height: 58,
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? AppColors.yellow
+                        : const Color(0xFFF3F4F6),
+                    shape: BoxShape.circle,
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: AppColors.yellow.withValues(alpha: 0.45),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Icon(
+                    item.icon,
+                    size: 26,
+                    color: AppColors.charcoal,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  item.label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight:
+                        isSelected ? FontWeight.w800 : FontWeight.w600,
+                    color: isSelected
+                        ? AppColors.charcoal
+                        : AppColors.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -724,30 +1077,31 @@ class _HomeTabState extends State<HomeTab> {
 
   Widget _aiCard(AiRecommendationResult result) {
     final r = result.restaurant;
+    final distStr = result.distanceKm > 0
+        ? '${result.distanceKm.toStringAsFixed(1)} km'
+        : '15 mins';
 
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: () => _open(r),
-      child: Container(
-        decoration: BoxDecoration(
-          color: HomeColors.restoCardBackground,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(22),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(18),
-              ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(22),
               child: SizedBox(
-                height: 120,
+                height: 135,
                 width: double.infinity,
                 child: Stack(
                   fit: StackFit.expand,
@@ -757,157 +1111,144 @@ class _HomeTabState extends State<HomeTab> {
                       category: r.category,
                       dishType: r.dishType,
                     ),
-                    if (result.distanceKm > 0)
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.65),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.near_me_rounded,
-                                size: 9,
+                    // Badge waktu / jarak di kiri atas (desain pill semi-transparan)
+                    Positioned(
+                      top: 10,
+                      left: 10,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 9,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.38),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.access_time_rounded,
+                              size: 13,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              distStr,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
                                 color: Colors.white,
                               ),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${result.distanceKm.toStringAsFixed(1)} km',
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
+                    ),
+                    // Badge rating di kanan bawah (pill kuning dengan bintang hitam)
+                    Positioned(
+                      bottom: 10,
+                      right: 10,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 9,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: HomeColors.ratingBadge,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.star_rounded,
+                              size: 15,
+                              color: AppColors.charcoal,
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              r.rating.toStringAsFixed(1),
+                              style: const TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.charcoal,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    r.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.charcoal,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '${r.category} • ${r.priceRange}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: AppColors.textMuted,
-                          ),
-                        ),
-                      ),
-                      const Icon(
-                        Icons.star_rounded,
-                        size: 14,
-                        color: AppColors.orange,
-                      ),
-                      const SizedBox(width: 2),
-                      Text(
-                        '${r.rating}',
-                        style: const TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.charcoal,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            r.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: AppColors.charcoal,
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            '${r.category} • ${r.priceRange}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textMuted,
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  // ---------- Nearby Carousel (LBS) ----------
-  Widget _nearbyCarousel() {
+  // ---------- Popular Recipes 2-Column Grid (100% Persis Gambar) ----------
+  Widget _popularRecipesGrid() {
     if (_loading) {
       return const SizedBox(
-        height: 230,
+        height: 200,
         child: Center(
           child: CircularProgressIndicator(color: AppColors.orange),
         ),
       );
     }
-    if (_picks.isEmpty) {
+    final items = _filteredPicks;
+    if (items.isEmpty) {
       return const SizedBox(
         height: 120,
         child: Center(
           child: Text(
-            'Belum ada rekomendasi.',
+            'Belum ada kuliner di kategori ini.',
             style: TextStyle(fontSize: 12, color: AppColors.textMuted),
           ),
         ),
       );
     }
-    return Column(
-      children: [
-        SizedBox(
-          height: 232,
-          child: PageView.builder(
-            controller: _pageCtrl,
-            padEnds: false,
-            physics: const BouncingScrollPhysics(),
-            itemCount: _picks.length,
-            onPageChanged: (i) => setState(() => _page = i),
-            itemBuilder: (_, i) => Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: _nearbyCard(_picks[i]),
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(
-            _picks.length,
-            (i) => AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              margin: const EdgeInsets.symmetric(horizontal: 3),
-              width: i == _page ? 18 : 6,
-              height: 6,
-              decoration: BoxDecoration(
-                color: i == _page ? AppColors.orange : AppColors.line,
-                borderRadius: BorderRadius.circular(3),
-              ),
-            ),
-          ),
-        ),
-      ],
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: items.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 14,
+        mainAxisSpacing: 18,
+        childAspectRatio: 0.69,
+      ),
+      itemBuilder: (_, i) => _gridCard(items[i]),
     );
   }
 
-  Widget _nearbyCard(Restaurant r) {
+  Widget _gridCard(Restaurant r) {
     // Hitung jarak jika koordinat tersedia
     String? distLabel;
     final loc = LocationService.instance.currentLocation.value;
@@ -922,193 +1263,129 @@ class _HomeTabState extends State<HomeTab> {
     }
 
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: () => _open(r),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(26),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            RestaurantImage(
-              imageUrl: r.imageUrl,
-              category: r.category,
-              dishType: r.dishType,
-            ),
-            DecoratedBox(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Container(
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withValues(alpha: 0.05),
-                    Colors.black.withValues(alpha: 0.82),
-                  ],
-                ),
+                borderRadius: BorderRadius.circular(22),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      // Badge "TERDEKAT"
-                      Container(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(22),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    RestaurantImage(
+                      imageUrl: r.imageUrl,
+                      category: r.category,
+                      dishType: r.dishType,
+                    ),
+                    // Badge waktu / jarak di kiri atas (desain pill semi-transparan persis seperti gambar)
+                    Positioned(
+                      top: 10,
+                      left: 10,
+                      child: Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 9,
+                          horizontal: 8,
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.greenDark,
-                          borderRadius: BorderRadius.circular(8),
+                          color: Colors.black.withValues(alpha: 0.38),
+                          borderRadius: BorderRadius.circular(20),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             const Icon(
-                              Icons.near_me_rounded,
-                              size: 9,
+                              Icons.schedule_rounded,
+                              size: 12,
                               color: Colors.white,
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              distLabel != null
-                                  ? 'TERDEKAT • $distLabel'
-                                  : 'TERDEKAT',
+                              distLabel ?? '15 mins',
                               style: const TextStyle(
-                                fontSize: 8.5,
-                                letterSpacing: 0.5,
-                                fontWeight: FontWeight.w800,
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w600,
                                 color: Colors.white,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      Flexible(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 9,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            r.category.toUpperCase(),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 8.5,
-                              letterSpacing: 0.5,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Spacer(),
-                  Text(
-                    r.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppText.display(22).copyWith(color: Colors.white),
-                  ),
-                  const SizedBox(height: 5),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.star_rounded,
-                        size: 15,
-                        color: AppColors.yellow,
-                      ),
-                      const SizedBox(width: 3),
-                      Text(
-                        r.rating.toStringAsFixed(1),
-                        style: const TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(width: 5),
-                      Text(
-                        r.reviewCount > 0
-                            ? '(${r.reviewCount} ulasan)'
-                            : '(Baru)',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.white.withValues(alpha: 0.7),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.place_rounded,
-                        size: 12,
-                        color: Colors.white.withValues(alpha: 0.7),
-                      ),
-                      const SizedBox(width: 3),
-                      Expanded(
-                        child: Text(
-                          r.address,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.white.withValues(alpha: 0.7),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          r.priceRange,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.yellow,
-                          ),
-                        ),
-                      ),
-                      Container(
+                    ),
+                    // Badge rating di kanan bawah (pill kuning dengan bintang hitam persis seperti gambar)
+                    Positioned(
+                      bottom: 10,
+                      right: 10,
+                      child: Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 9,
+                          horizontal: 8,
+                          vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.orange,
-                          borderRadius: BorderRadius.circular(12),
+                          color: AppColors.yellow,
+                          borderRadius: BorderRadius.circular(20),
                         ),
-                        child: const Text(
-                          'Lihat Detail →',
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                          ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.star_rounded,
+                              size: 14,
+                              color: AppColors.charcoal,
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              r.rating.toStringAsFixed(1),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.charcoal,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            r.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 14.5,
+              fontWeight: FontWeight.w800,
+              color: AppColors.charcoal,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            '${r.category} • ${r.priceRange}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textMuted,
+            ),
+          ),
+        ],
       ),
     );
   }

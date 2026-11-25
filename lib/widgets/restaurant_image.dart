@@ -52,7 +52,7 @@ class RestaurantImage extends StatelessWidget {
             Positioned(
               left: 6,
               bottom: 6,
-              right: 6,
+              right: 80,
               child: _Badge(
                 text: 'Foto ilustrasi · ${dishImage.photographer} / Unsplash',
               ),
