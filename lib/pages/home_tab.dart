@@ -490,10 +490,12 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
-  // ---------- Kotak Banner (Warna Seperti Navbar) ----------
+  // ---------- Kotak Personalisasi AI (Pengganti Promo) ----------
   Widget _bannerCard() {
     return GestureDetector(
-      onTap: () => widget.onSeeAll?.call(),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const AiProfilePage()),
+      ),
       child: Container(
         height: 148,
         decoration: BoxDecoration(
@@ -533,7 +535,7 @@ class _HomeTabState extends State<HomeTab> {
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: const Text(
-                          'PENAWARAN SPESIAL',
+                          'PERSONALISASI AI',
                           style: TextStyle(
                             fontSize: 9.5,
                             letterSpacing: 0.6,
@@ -544,9 +546,9 @@ class _HomeTabState extends State<HomeTab> {
                       ),
                       const SizedBox(height: 6),
                       const Text(
-                        'Diskon s/d 30%',
+                        'Sesuai Selera Kamu',
                         style: TextStyle(
-                          fontSize: 20,
+                          fontSize: 18,
                           fontWeight: FontWeight.w900,
                           color: Colors.white,
                           height: 1.15,
@@ -554,7 +556,7 @@ class _HomeTabState extends State<HomeTab> {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        'Nikmati kuliner favorit pilihanmu',
+                        'Sesuaikan preferensi rasa & budget',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
@@ -581,7 +583,7 @@ class _HomeTabState extends State<HomeTab> {
                       ],
                     ),
                     child: const Text(
-                      'Lihat Promo →',
+                      'Atur Selera →',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,

@@ -7,10 +7,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../props/app_colors.dart';
 import '../props/app_text.dart';
-import '../services/face_biometric_service.dart';
 import '../utils/validators.dart';
 import '../widgets/buttons.dart';
-import '../widgets/face_id_scanner_sheet.dart';
 import '../widgets/foodie_logo.dart';
 import '../widgets/text_field.dart';
 import 'login.dart';
@@ -45,8 +43,6 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
   int _currentStep = 0;
   bool _isLoading = false;
-  bool _isFaceIdVerified = false;
-  bool _hasFaceIdEnrolled = false;
   String? _errorMessage;
 
   Timer? _resendTimer;
@@ -59,7 +55,6 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     if (widget.initialEmail != null && widget.initialEmail!.trim().isNotEmpty) {
       _emailController.text = widget.initialEmail!.trim();
     }
-    _checkFaceIdStatus();
     _listenToAuthRecovery();
   }
 
@@ -73,16 +68,6 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     _confirmPasswordController.dispose();
     _focusNodeOtp.dispose();
     super.dispose();
-  }
-
-  Future<void> _checkFaceIdStatus() async {
-    try {
-      final inputEmail = _emailController.text.trim();
-      final enrolled = inputEmail.isNotEmpty
-          ? await FaceBiometricService.instance.isFaceEnrolled(email: inputEmail)
-          : await FaceBiometricService.instance.isFaceEnrolled();
-      if (mounted) setState(() => _hasFaceIdEnrolled = enrolled);
-    } catch (_) {}
   }
 
   void _listenToAuthRecovery() {
@@ -144,59 +129,6 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       return 'Koneksi jaringan terputus. Pastikan perangkat Anda terhubung ke internet.';
     }
     return msg;
-  }
-
-  Future<void> _verifyWithFaceId() async {
-    FocusManager.instance.primaryFocus?.unfocus();
-    final inputEmail = _emailController.text.trim();
-    String targetEmail;
-    String targetName;
-
-    if (inputEmail.isNotEmpty) {
-      final isUserEnrolled = await FaceBiometricService.instance.isFaceEnrolled(email: inputEmail);
-      if (!isUserEnrolled) {
-        _showSnackBar('Face ID belum didaftarkan untuk akun $inputEmail.', bg: AppColors.charcoal);
-        return;
-      }
-      targetEmail = inputEmail;
-      final prefs = await SharedPreferences.getInstance();
-      final key = inputEmail.toLowerCase().replaceAll(RegExp(r'[^a-z0-9_]'), '_');
-      targetName = prefs.getString('foodie_face_name_$key') ??
-          prefs.getString('foodie_last_user_name') ??
-          inputEmail.split('@').first;
-    } else {
-      final account = await FaceBiometricService.instance.getActiveBiometricAccount();
-      if (account == null) {
-        _showSnackBar('Belum ada akun terdaftar untuk Face ID di perangkat ini.', bg: AppColors.charcoal);
-        return;
-      }
-      targetEmail = account['email']!;
-      targetName = account['name']!;
-      _emailController.text = targetEmail;
-    }
-
-    if (!mounted) return;
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withValues(alpha: 0.55),
-      builder: (ctx) => FaceIdScannerSheet(
-        userName: targetName,
-        userEmail: targetEmail,
-        isEnrollment: false,
-        onSuccess: () {
-          Navigator.of(ctx).pop();
-          if (!mounted) return;
-          setState(() {
-            _isFaceIdVerified = true;
-            _currentStep = 2;
-            _errorMessage = null;
-          });
-          _showSnackBar('Identitas Terverifikasi via Face ID untuk $targetName! Silakan buat kata sandi baru.');
-        },
-      ),
-    );
   }
 
   Future<void> _sendRecoveryEmail() async {
@@ -352,8 +284,6 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
       try {
         final prefs = await SharedPreferences.getInstance();
-        final key = email.toLowerCase().replaceAll(RegExp(r'[^a-z0-9_]'), '_');
-        await prefs.setString('foodie_face_pwd_$key', newPassword);
         await prefs.setString('foodie_last_user_email', email);
         await prefs.setString('foodie_saved_password', newPassword);
       } catch (_) {}
@@ -385,7 +315,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         _currentStep = 0;
         _errorMessage = null;
       });
-    } else if (_currentStep == 2 && !_isFaceIdVerified) {
+    } else if (_currentStep == 2) {
       setState(() {
         _currentStep = 1;
         _errorMessage = null;
@@ -526,14 +456,6 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             loading: _isLoading,
             onPressed: _sendRecoveryEmail,
           ),
-          if (_hasFaceIdEnrolled) ...[
-            const SizedBox(height: 14),
-            SoftButton(
-              label: 'Pulihkan dengan Face ID',
-              icon: Icons.face_retouching_natural_rounded,
-              onPressed: _verifyWithFaceId,
-            ),
-          ],
           const SizedBox(height: 16),
           TextButton(
             onPressed: _handleBack,

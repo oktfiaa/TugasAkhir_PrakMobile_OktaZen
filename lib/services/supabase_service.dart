@@ -92,7 +92,6 @@ class SupabaseService {
             event == AuthChangeEvent.tokenRefreshed ||
             event == AuthChangeEvent.userUpdated) {
           await initStorage(force: true);
-          await syncBiometricsFromCloud();
           _initRealtime();
           try {
             await getUserReviews();
@@ -314,67 +313,6 @@ class SupabaseService {
     try {
       await _safeClient?.auth.signOut();
     } catch (_) {}
-  }
-
-  // ─── BIOMETRICS SYNC (SUPABASE CLOUD + LOCAL HIVE DB) ───
-
-  /// Menyimpan metrik biometrik wajah ke Supabase user metadata dan Hive local database
-  Future<void> saveFaceBiometricsToCloud({
-    required String email,
-    required String name,
-    required Map<String, dynamic> metrics,
-    String? password,
-  }) async {
-    // 1. Simpan di database NoSQL lokal Hive (tahan logout berkali-kali)
-    await HiveService.instance.saveBiometricProfile(
-      email: email,
-      name: name,
-      password: password,
-      metrics: metrics,
-      userId: userId,
-    );
-
-    // 2. Simpan di Supabase Auth User Metadata (Cloud)
-    try {
-      final client = _safeClient;
-      if (client != null && currentUser != null) {
-        await client.auth.updateUser(
-          UserAttributes(
-            data: {
-              'face_biometric_enrolled': true,
-              'face_metrics': metrics,
-              'face_name': name,
-            },
-          ),
-        );
-      }
-    } catch (e) {
-      debugPrint('Supabase cloud biometric sync error: $e');
-    }
-  }
-
-  /// Sinkronisasi data biometrik dari Supabase Cloud ke database lokal Hive
-  Future<void> syncBiometricsFromCloud() async {
-    try {
-      final user = currentUser;
-      if (user == null || user.email == null) return;
-      final meta = user.userMetadata;
-      if (meta != null && meta['face_metrics'] != null) {
-        final metricsMap =
-            Map<String, dynamic>.from(meta['face_metrics'] as Map);
-        final name = meta['face_name']?.toString() ??
-            meta['name']?.toString() ??
-            user.email!.split('@').first;
-        await HiveService.instance.saveBiometricProfile(
-          email: user.email!,
-          name: name,
-          metrics: metricsMap,
-          userId: user.id,
-        );
-      }
-    } catch (e) {
-      debugPrint('Error syncing biometrics from cloud: $e');
-    }
   }
 
   // ─── PROFILES ───
@@ -663,23 +601,6 @@ class SupabaseService {
       }
       await _client.from('course_feedback').update(cfUpdate).eq('user_id', uid);
     } catch (_) {}
-
-    // 5. Update profil biometrik Hive jika user ini terdaftar
-    final userEmail = currentUser?.email;
-    if (userEmail != null && userEmail.isNotEmpty) {
-      try {
-        final hiveProf = HiveService.instance.getBiometricProfile(userEmail);
-        if (hiveProf != null) {
-          await HiveService.instance.saveBiometricProfile(
-            email: userEmail,
-            name: cleanName,
-            password: hiveProf['password'] as String?,
-            metrics: (hiveProf['metrics'] as Map?)?.cast<String, dynamic>() ?? {},
-            userId: uid,
-          );
-        }
-      } catch (_) {}
-    }
 
     _profileChangedController.add(null);
   }

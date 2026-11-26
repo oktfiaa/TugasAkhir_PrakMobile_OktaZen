@@ -531,15 +531,28 @@ class _DetailPageState extends State<DetailPage> {
         padding: EdgeInsets.fromLTRB(16, top + 8, 16, 0),
         child: Row(
           children: [
-            InkWell(
+            GestureDetector(
               onTap: () => Navigator.of(context).maybePop(),
-              borderRadius: BorderRadius.circular(8),
-              child: const Padding(
-                padding: EdgeInsets.all(6.0),
-                child: Icon(
-                  Icons.arrow_back_ios_new_rounded,
-                  size: 20,
-                  color: AppColors.charcoal,
+              child: Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x26000000),
+                      blurRadius: 8,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    size: 18,
+                    color: AppColors.charcoal,
+                  ),
                 ),
               ),
             ),

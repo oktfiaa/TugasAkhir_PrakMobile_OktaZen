@@ -18,13 +18,11 @@ import 'profile_tab.dart';
 class HomePage extends StatefulWidget {
   final String name;
   final bool fromRegister;
-  final bool biometricOn;
 
   const HomePage({
     super.key,
     required this.name,
     this.fromRegister = false,
-    this.biometricOn = false,
   });
 
   @override
@@ -137,7 +135,6 @@ class _HomePageState extends State<HomePage> {
             ProfileTab(
               name: _currentName,
               fromRegister: widget.fromRegister,
-              biometricOn: widget.biometricOn,
               onBackToHome: () => _select(0),
               onNameChanged: (newName) {
                 setState(() {

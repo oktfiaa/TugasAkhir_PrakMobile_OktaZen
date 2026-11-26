@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../services/face_biometric_service.dart';
 import '../services/supabase_service.dart';
 import '../widgets/foodie_logo.dart';
 import 'home.dart';
@@ -67,17 +66,11 @@ class _IntroPageState extends State<IntroPage>
                         ? user.email!.split('@').first
                         : 'Pengguna FOODIE';
 
-        final biometricEnrolled =
-            await FaceBiometricService.instance.isFaceEnrolled(
-          email: user.email,
-        );
-
         if (!mounted) return;
         Navigator.of(context).pushReplacement(
           PageRouteBuilder(
             pageBuilder: (_, _, _) => HomePage(
               name: effectiveName,
-              biometricOn: biometricEnrolled,
             ),
             transitionDuration: const Duration(milliseconds: 450),
             transitionsBuilder: (_, anim, _, child) =>

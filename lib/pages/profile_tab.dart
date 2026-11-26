@@ -14,25 +14,19 @@ import '../models/user_ai_profile.dart';
 import '../props/app_colors.dart';
 import '../props/app_text.dart';
 import '../services/ai_recommendation_service.dart';
-import '../services/face_biometric_service.dart';
 import '../services/supabase_service.dart';
 import '../services/hive_service.dart';
-import '../services/notification_service.dart';
 import '../widgets/auth_widgets.dart';
 import '../widgets/common_widgets.dart';
-import '../widgets/face_id_scanner_sheet.dart';
 import 'ai_profile_page.dart';
 import 'detail_page.dart';
 import 'intro.dart';
-import 'notifications_page.dart';
 import 'saran_kesan_page.dart';
-import '../widgets/modern_time_picker.dart';
 import '../widgets/restaurant_image.dart';
 
 class ProfileTab extends StatefulWidget {
   final String name;
   final bool fromRegister;
-  final bool biometricOn;
   final void Function(String? url)? onAvatarChanged;
   final void Function(String name)? onNameChanged;
   final VoidCallback? onBackToHome;
@@ -41,7 +35,6 @@ class ProfileTab extends StatefulWidget {
     super.key,
     required this.name,
     this.fromRegister = false,
-    this.biometricOn = false,
     this.onAvatarChanged,
     this.onNameChanged,
     this.onBackToHome,
@@ -53,12 +46,6 @@ class ProfileTab extends StatefulWidget {
 
 class _ProfileTabState extends State<ProfileTab>
     with SingleTickerProviderStateMixin {
-  late bool _biometric = widget.biometricOn;
-  bool _notif = true;
-  bool _mealIsSet = false;
-  int _mealHour = 12;
-  int _mealMinute = 0;
-  String _mealLabel = 'Makan Siang';
   Profile? _profile;
   UserAiProfile? _aiProfile;
   Map<String, int> _stats = {'reviews': 0};
@@ -78,7 +65,6 @@ class _ProfileTabState extends State<ProfileTab>
   @override
   void initState() {
     super.initState();
-    _loadPrefs();
     _load();
     _loadHistory();
     _subscribeRealtime();
@@ -142,269 +128,6 @@ class _ProfileTabState extends State<ProfileTab>
     super.dispose();
   }
 
-  Future<void> _loadPrefs() async {
-    try {
-      final currentEmail = Supabase.instance.client.auth.currentUser?.email;
-      if (currentEmail != null && currentEmail.isNotEmpty) {
-        _biometric = await FaceBiometricService.instance.isFaceEnrolled(
-          email: currentEmail,
-        );
-      } else {
-        _biometric = await FaceBiometricService.instance.isFaceEnrolled();
-      }
-      _notif = HiveService.instance.isNotificationsEnabled();
-
-      final mealPref = HiveService.instance.getMealReminderPreference();
-      _mealIsSet = mealPref['isSet'] as bool? ?? false;
-      _mealHour = mealPref['hour'] as int? ?? 12;
-      _mealMinute = mealPref['minute'] as int? ?? 0;
-      _mealLabel = mealPref['label'] as String? ?? 'Makan Siang';
-
-      if (!mounted) return;
-      setState(() {});
-    } catch (_) {}
-  }
-
-  Future<void> _toggleBiometric(bool val) async {
-    final currentEmail =
-        Supabase.instance.client.auth.currentUser?.email ??
-        (_profile?.displayName != null
-            ? '${_profile!.displayName.toLowerCase().replaceAll(' ', '.')}@foodie.id'
-            : 'user@foodie.id');
-    final currentName = _profile?.displayName ?? widget.name;
-
-    if (val) {
-      final prefs = await SharedPreferences.getInstance();
-      final savedPwd = prefs.getString('foodie_saved_password');
-
-      if (!mounted) return;
-
-      // Buka FaceIdScannerSheet dengan preview kamera depan
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        barrierColor: Colors.black.withValues(alpha: 0.55),
-        builder: (ctx) => FaceIdScannerSheet(
-          userName: currentName,
-          userEmail: currentEmail,
-          savedPassword: savedPwd,
-          isEnrollment: true,
-          onSuccess: () async {
-            Navigator.of(ctx).pop();
-            setState(() => _biometric = true);
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Row(
-                    children: [
-                      const Icon(
-                        Icons.face_unlock_rounded,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'Apple Face ID berhasil diaktifkan untuk $currentName.',
-                        ),
-                      ),
-                    ],
-                  ),
-                  backgroundColor: AppColors.greenDark,
-                  behavior: SnackBarBehavior.floating,
-                  duration: const Duration(seconds: 2),
-                ),
-              );
-            }
-          },
-        ),
-      );
-      return;
-    }
-
-    setState(() => _biometric = false);
-    try {
-      await FaceBiometricService.instance.removeEnrolledFace(
-        email: currentEmail,
-      );
-    } catch (_) {}
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Apple Face ID dinonaktifkan'),
-          backgroundColor: AppColors.charcoal,
-          behavior: SnackBarBehavior.floating,
-          duration: Duration(seconds: 2),
-        ),
-      );
-    }
-  }
-
-  Future<void> _toggleNotif(bool val) async {
-    setState(() => _notif = val);
-    try {
-      await HiveService.instance.setNotificationsEnabled(val);
-      await HiveService.instance.saveMealReminderPreference(
-        enabled: val && _mealIsSet,
-        isSet: _mealIsSet,
-        hour: _mealHour,
-        minute: _mealMinute,
-        label: _mealLabel,
-      );
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('foodie_notifications_enabled', val);
-
-      if (val && _mealIsSet) {
-        await NotificationService.instance.requestPermissions();
-        await NotificationService.instance.scheduleDailyMealReminder(
-          hour: _mealHour,
-          minute: _mealMinute,
-          label: _mealLabel,
-        );
-      } else {
-        await NotificationService.instance.cancelAll();
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              val
-                  ? (_mealIsSet
-                        ? 'Notifikasi aktif (Jadwal: $_mealLabel $_mealHour:${_mealMinute.toString().padLeft(2, '0')} WIB)'
-                        : 'Notifikasi aktif')
-                  : 'Semua notifikasi dinonaktifkan',
-            ),
-            backgroundColor: val ? AppColors.greenDark : AppColors.charcoal,
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
-    } catch (_) {}
-  }
-
-  Future<void> _showMealReminderPicker() async {
-    if (!_notif) {
-      setState(() => _notif = true);
-      await HiveService.instance.setNotificationsEnabled(true);
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('foodie_notifications_enabled', true);
-      await NotificationService.instance.requestPermissions();
-    }
-
-    if (!mounted) return;
-
-    if (_mealIsSet) {
-      final action = await showDialog<String>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Text('Pengingat Makan Harian', style: AppText.display(16)),
-          content: Text(
-            'Saat ini diatur untuk $_mealLabel pukul ${_mealHour.toString().padLeft(2, '0')}:${_mealMinute.toString().padLeft(2, '0')} WIB.',
-            style: const TextStyle(fontSize: 13, color: AppColors.textDark),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, 'delete'),
-              child: const Text(
-                'Hapus Pengingat',
-                style: TextStyle(color: AppColors.red),
-              ),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.greenDark,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              onPressed: () => Navigator.pop(ctx, 'edit'),
-              child: const Text('Ubah Jam'),
-            ),
-          ],
-        ),
-      );
-
-      if (action == 'delete') {
-        setState(() {
-          _mealIsSet = false;
-        });
-        await HiveService.instance.removeMealReminderPreference();
-        await NotificationService.instance.cancelNotification(9999);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Pengingat makan harian dihapus'),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-        return;
-      } else if (action != 'edit') {
-        return;
-      }
-    }
-
-    if (!mounted) return;
-
-    final pickedTime = await showModernTimePicker(
-      context,
-      initialTime: TimeOfDay(hour: _mealHour, minute: _mealMinute),
-      title: 'Pilih Jam Pengingat Makan',
-    );
-
-    if (pickedTime == null) return;
-
-    final newLabel = switch (pickedTime.hour) {
-      >= 5 && < 11 => 'Sarapan Pagi',
-      >= 11 && < 16 => 'Makan Siang',
-      >= 16 && < 21 => 'Santap Malam Gudeg',
-      _ => 'Kuliner Dini Hari Jogja',
-    };
-
-    setState(() {
-      _notif = true;
-      _mealIsSet = true;
-      _mealHour = pickedTime.hour;
-      _mealMinute = pickedTime.minute;
-      _mealLabel = newLabel;
-    });
-
-    await HiveService.instance.setNotificationsEnabled(true);
-    await HiveService.instance.saveMealReminderPreference(
-      enabled: true,
-      isSet: true,
-      hour: pickedTime.hour,
-      minute: pickedTime.minute,
-      label: newLabel,
-    );
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('foodie_notifications_enabled', true);
-
-    await NotificationService.instance.requestPermissions();
-    await NotificationService.instance.scheduleDailyMealReminder(
-      hour: pickedTime.hour,
-      minute: pickedTime.minute,
-      label: newLabel,
-    );
-
-    if (mounted) {
-      NotificationService.showInAppBanner(
-        context,
-        title: 'Pengingat Makan Diatur',
-        body:
-            '$newLabel • Pukul ${pickedTime.hour.toString().padLeft(2, '0')}:${pickedTime.minute.toString().padLeft(2, '0')} WIB',
-        icon: Icons.schedule_rounded,
-      );
-    }
-  }
-
   Future<void> _loadHistory() async {
     final svc = SupabaseService.instance;
     final results = await Future.wait([
@@ -418,237 +141,6 @@ class _ProfileTabState extends State<ProfileTab>
       _stats['reviews'] = _myReviews.length;
       _histLoading = false;
     });
-  }
-
-  void _showUnifiedNotificationSettingsSheet() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheetState) {
-          final now = DateTime.now();
-          final pendingVisits = HiveService.instance
-              .getAllVisitReminders()
-              .where((r) {
-                final dt = DateTime.tryParse(r['scheduledAt']?.toString() ?? '');
-                return dt != null &&
-                    dt.isAfter(now) &&
-                    (r['isCompleted'] != true);
-              })
-              .length;
-          return Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-            ),
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.line,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppColors.orange.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(
-                        Icons.notifications_active_rounded,
-                        color: AppColors.orange,
-                        size: 22,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Pengaturan Notifikasi',
-                            style: AppText.display(18),
-                          ),
-                          const Text(
-                            'Atur pengingat makan & kunjungan restoran',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textMuted,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Switch(
-                      value: _notif,
-                      activeTrackColor: AppColors.orange,
-                      activeThumbColor: Colors.white,
-                      onChanged: (val) async {
-                        await _toggleNotif(val);
-                        setSheetState(() {});
-                        setState(() {});
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                const Divider(height: 1, color: AppColors.line),
-                const SizedBox(height: 12),
-
-                // Pilihan 1: Pengingat Makan Harian
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: AppColors.cream,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.restaurant_rounded,
-                      color: AppColors.charcoal,
-                      size: 20,
-                    ),
-                  ),
-                  title: const Text(
-                    'Pengingat Jadwal Makan',
-                    style: TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  subtitle: Text(
-                    _mealIsSet
-                        ? '$_mealLabel pukul ${_mealHour.toString().padLeft(2, '0')}:${_mealMinute.toString().padLeft(2, '0')} WIB'
-                        : 'Belum diatur (ketuk untuk tentukan jam)',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                  trailing: const Icon(
-                    Icons.chevron_right_rounded,
-                    color: AppColors.slateBlue,
-                  ),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _showMealReminderPicker();
-                  },
-                ),
-                const SizedBox(height: 6),
-
-                // Pilihan 2: Pengingat Kunjungan Restoran
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: AppColors.cream,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.pin_drop_rounded,
-                      color: AppColors.orange,
-                      size: 20,
-                    ),
-                  ),
-                  title: const Text(
-                    'Pengingat Kunjungan Restoran',
-                    style: TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  subtitle: Text(
-                    pendingVisits > 0
-                        ? '$pendingVisits jadwal kunjungan aktif'
-                        : 'Jadwalkan tanggal & jam kunjungan kuliner',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                  trailing: const Icon(
-                    Icons.chevron_right_rounded,
-                    color: AppColors.slateBlue,
-                  ),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const NotificationsPage(),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 14),
-
-                // Tombol Uji Notifikasi Langsung (Praktikum Demo)
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.charcoal,
-                      side: const BorderSide(
-                        color: AppColors.charcoal,
-                        width: 1.2,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    icon: const Icon(Icons.send_rounded, size: 16),
-                    label: const Text(
-                      'Uji Notifikasi Sekarang (Instant Test)',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    onPressed: () async {
-                      await NotificationService.instance
-                          .showInstantNotification(
-                            id: 999,
-                            title: 'FOODIE: Waktunya Makan!',
-                            body:
-                                'Pengingat kuliner FOODIE berhasil terhubung dengan notifikasi lokal sistem.',
-                            force: true,
-                          );
-                      if (ctx.mounted) {
-                        ScaffoldMessenger.of(ctx).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Notifikasi uji berhasil dikirim ke sistem HP!',
-                            ),
-                            backgroundColor: AppColors.greenDark,
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      }
-                    },
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
   }
 
   // ─── EDIT PROFILE SHEET ───
@@ -1390,24 +882,6 @@ class _ProfileTabState extends State<ProfileTab>
                     _sectionLabel('PREFERENSI SISTEM'),
                     const SizedBox(height: 8),
                     _group([
-                      _switchTile(
-                        Icons.face_retouching_natural_rounded,
-                        'Autentikasi Wajah (Face ID)',
-                        _biometric,
-                        _toggleBiometric,
-                      ),
-                      _tile(
-                        _notif
-                            ? Icons.notifications_active_rounded
-                            : Icons.notifications_off_rounded,
-                        'Pengaturan Notifikasi',
-                        trailing: _notif
-                            ? (_mealIsSet
-                                ? '${_mealHour.toString().padLeft(2, '0')}:${_mealMinute.toString().padLeft(2, '0')} WIB'
-                                : 'Aktif')
-                            : 'Nonaktif',
-                        onTap: _showUnifiedNotificationSettingsSheet,
-                      ),
                       _tile(
                         Icons.rate_review_rounded,
                         'Saran & Kesan',
@@ -1897,6 +1371,12 @@ class _ProfileTabState extends State<ProfileTab>
   Widget _aiPersonaCard() {
     final p = _aiProfile;
     final bool isComplete = p != null && p.isCompleted;
+    final personaTitle = isComplete
+        ? (p!.personaSummary.isNotEmpty ? p.personaSummary : 'Personalisasi Kuliner AI')
+        : 'Personalisasi Kuliner AI';
+    final personaSummary = isComplete
+        ? p!.personaSummary
+        : 'Sesuaikan selera rasa, pantangan & budget untuk rekomendasi kuliner AI yang akurat.';
 
     return GestureDetector(
       onTap: () async {
@@ -1905,67 +1385,145 @@ class _ProfileTabState extends State<ProfileTab>
         _loadAiProfile();
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppColors.line.withValues(alpha: 0.6)),
+          color: AppColors.greenDark,
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: AppColors.greenDark.withValues(alpha: 0.25),
+              blurRadius: 14,
+              offset: const Offset(0, 5),
             ),
           ],
         ),
-        child: Row(
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
           children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: AppColors.tint(AppColors.orange, 0.12),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.tune_rounded,
-                color: AppColors.orange,
-                size: 20,
+            // Decorative background circular glow
+            Positioned(
+              right: -25,
+              bottom: -25,
+              child: Container(
+                width: 130,
+                height: 130,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.05),
+                ),
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
+            Padding(
+              padding: const EdgeInsets.all(18),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Preferensi & Persona Kuliner',
-                    style: TextStyle(
-                      fontSize: 13.5,
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 9,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.yellow.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(7),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(
+                              Icons.auto_awesome_rounded,
+                              size: 11,
+                              color: AppColors.yellow,
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              'PERSONALISASI KULINER',
+                              style: TextStyle(
+                                fontSize: 9.5,
+                                letterSpacing: 0.6,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.yellow,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Spacer(),
+                      if (isComplete)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Text(
+                            '100% Aktif',
+                            style: TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    personaTitle,
+                    style: const TextStyle(
+                      fontSize: 16.5,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.charcoal,
+                      color: Colors.white,
+                      height: 1.2,
                     ),
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 5),
                   Text(
-                    isComplete
-                        ? p.personaSummary
-                        : 'Atur preferensi kuliner untuk rekomendasi AI personal',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textMuted,
-                      fontWeight: FontWeight.w500,
+                    personaSummary,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: Colors.white.withValues(alpha: 0.82),
+                      height: 1.35,
                     ),
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 7,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.orange,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.orange.withValues(alpha: 0.35),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: const Text(
+                          'Atur Selera →',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ),
-            const Icon(
-              Icons.arrow_forward_ios_rounded,
-              size: 14,
-              color: AppColors.textMuted,
             ),
           ],
         ),
@@ -2200,35 +1758,6 @@ class _ProfileTabState extends State<ProfileTab>
           ],
         ),
         onTap: onTap ?? () {},
-      ),
-    );
-  }
-
-  Widget _switchTile(
-    IconData icon,
-    String title,
-    bool value,
-    ValueChanged<bool> onChanged,
-  ) {
-    return Material(
-      color: Colors.transparent,
-      child: ListTile(
-        dense: true,
-        leading: _iconBox(icon),
-        title: Text(
-          title,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            color: AppColors.greenDark,
-          ),
-        ),
-        trailing: Switch(
-          value: value,
-          onChanged: onChanged,
-          activeThumbColor: Colors.white,
-          activeTrackColor: AppColors.orange,
-        ),
       ),
     );
   }
